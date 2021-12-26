@@ -1,0 +1,9 @@
+import Memory from "runtime/unsafe/memory"
+import WasmI32 from "runtime/unsafe/wasmi32"
+
+@disableGC
+let create = (n) => {
+    let length = WasmI32.fromGrain(4 * n);
+    let ptr = Memory.malloc(length)
+    WasmI32.toGrain(ptr) : Int64
+}
