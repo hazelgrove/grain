@@ -27,7 +27,6 @@ setup.ml
 myocamlbuild.ml
 .merlin
 js-runner/dist
-/*.gr
 _esy/
 pkg/
 
