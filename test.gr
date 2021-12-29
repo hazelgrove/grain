@@ -1,7 +1,9 @@
 import Hazel from "hazel"
+import Array from "array"
+//let p1 = Hazel.buildBoolLit(true);
+//let p2 = Hazel.buildBoolLit(false);
+//let prog = Hazel.buildBinBoolOp(Hazel.And, p1, p2);
 
-let p1 = Hazel.buildBoolLit(true);
-let p2 = Hazel.buildBoolLit(false);
-let prog = Hazel.buildBinBoolOp(Hazel.And, p1, p2);
-
-print(prog)
+//print(Hazel.del_eval_tag(prog))
+//print(p1)
+print(Hazel.testgrain(Array.make(4, 7)))
