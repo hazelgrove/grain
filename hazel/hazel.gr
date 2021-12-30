@@ -1,0 +1,173 @@
+import Array from "array"
+import WasmI32 from "runtime/unsafe/wasmi32"
+import { coerceNumberToWasmI32 } from "runtime/numbers"
+import PrintWasm from "runtime/unsafe/printWasm"
+
+export enum BoolOp {And, Or};
+let _TAG_BOOLOP_AND_ : Number = 0;
+let _TAG_BOOLOP_OR_ : Number = 1;
+
+
+let _TAG_BoolLit_ : Number = 0;
+let _TAG_BinBoolOp_ : Number = 1;
+let _TAG_EmptyHole_ : Number = 2;
+
+@disableGC
+export let unevaluated = (arr : Array<Number>) => {
+    let addr = WasmI32.fromGrain(arr)
+    let addr = WasmI32.add(addr, 1n) // toGrain() will check whether it is a number
+    let addr = WasmI32.toGrain(addr) : Number
+    addr
+}
+
+@disableGC
+export let boxed = (arr : Array<Number>) => {
+    let addr = WasmI32.fromGrain(arr)
+    let addr = WasmI32.add(addr, 3n) // toGrain() will check whether it is a number
+    let addr = WasmI32.toGrain(addr) : Number
+    addr
+}
+
+@disableGC
+export let indet = (arr : Array<Number>) => {
+    let addr = WasmI32.fromGrain(arr)
+    let addr = WasmI32.add(addr, 7n) // toGrain() will check whether it is a number
+    let addr = WasmI32.toGrain(addr) : Number
+    addr
+}
+
+@disableGC
+export let is_unevaluated = (x : Number) => {
+    let addr = WasmI32.fromGrain(x)
+    let addr = WasmI32.remS(addr, 8n)
+    WasmI32.eq(addr, 1n)
+}
+
+@disableGC
+export let is_boxed = (x : Number) => {
+    let addr = WasmI32.fromGrain(x)
+    let addr = WasmI32.remS(addr, 8n)
+    WasmI32.eq(addr, 3n)
+}
+
+@disableGC
+export let is_indet = (x : Number) => {
+    let addr = WasmI32.fromGrain(x)
+    let addr = WasmI32.remS(addr, 8n)
+    WasmI32.eq(addr, 7n)
+}
+
+@disableGC
+let del_eval_tag = (num : Number) => {
+    let addr = WasmI32.fromGrain(num);
+    let addr = WasmI32.and(addr, 0xFFFFFFF8n);
+    WasmI32.toGrain(addr) : (Array<Number>)
+}
+
+export let rec del_all_eval_tag = (num : Number) => {
+    let arr = del_eval_tag(num);
+    if (arr[0] == _TAG_BinBoolOp_) {
+        arr[2] = del_all_eval_tag(arr[2]);
+        arr[3] = del_all_eval_tag(arr[3]);
+        void
+    } else {
+        void
+    }
+    WasmI32.toGrain(WasmI32.fromGrain(arr)) : Number
+}
+
+@disableGC
+export let buildBoolLit = (x : Bool) => {
+    let ret = Array.make(2, 0);
+    ret[0] = _TAG_BoolLit_;
+    ret[1] = if(x) {1} else {0};
+    unevaluated(ret)
+}
+
+@disableGC
+export let buildBinBoolOp = (op : BoolOp, x, y) => {
+    let ret = Array.make(4, 0);
+    ret[0] = _TAG_BinBoolOp_;
+    ret[1] = if(op == And) {_TAG_BOOLOP_AND_} else {_TAG_BOOLOP_OR_};
+    ret[2] = x;
+    ret[3] = y;
+    unevaluated(ret)
+}
+
+@disableGC
+export let buildEmptyHole = (metavar : Number) => {
+    let ret = Array.make(2, 0);
+    ret[0] = _TAG_EmptyHole_;
+    ret[1] = metavar;
+    unevaluated(ret)
+}
+
+export let print_prog = (prog) => {
+    print(del_all_eval_tag(prog))
+}
+
+let fff = (x : Number) => {
+    x + 5
+}
+
+let evaluatorArr = Array.make(8, fff)
+
+export let rec evaluate = (prog) => {
+    //print(prog)
+    //print(is_unevaluated(prog))
+    if (is_unevaluated(prog)) {
+        let arr = del_eval_tag(prog)
+        let tag = arr[0]
+        (evaluatorArr[tag])(prog)
+    } else {
+        prog
+    }
+}
+
+@disableGC
+let evaluateBoolLit = (prog) => {
+    print("evaluateBoolLit")
+    let arr = del_eval_tag(prog)
+    boxed(arr)
+}
+
+@disableGC
+let evaluateEmptyHole = (prog) => {
+    print("evaluateEmptyHole")
+    let arr = del_eval_tag(prog)
+    indet(arr)
+}
+
+@disableGC
+let evaluateBinBoolOp = (prog) => {
+    print("evaluateBinBoolOp")
+    let arr = del_eval_tag(prog)
+    arr[2] = evaluate(arr[2])
+    arr[3] = evaluate(arr[3])
+    if (is_boxed(arr[2]) && is_boxed(arr[3])) {
+        let arr1 = del_eval_tag(arr[2])
+        let arr2 = del_eval_tag(arr[3])
+        if (arr[1] == _TAG_BOOLOP_AND_) {
+            let result = arr1[1] * arr2[1]
+            let ret = buildBoolLit(result == 1)
+            boxed(del_eval_tag(ret))
+        } else if (arr[1] == _TAG_BOOLOP_OR_) {
+            let result = (arr1[1] + arr2[1]) % 2
+            let ret = buildBoolLit(result == 1)
+            boxed(del_eval_tag(ret))
+        } else {
+            indet(arr) // TODO: ERROR
+        }
+    } else {
+        indet(arr)
+    }
+}
+
+let init_evaluatorArr = () => {
+    evaluatorArr[_TAG_BoolLit_] = evaluateBoolLit
+    evaluatorArr[_TAG_BinBoolOp_] = evaluateBinBoolOp
+    evaluatorArr[_TAG_EmptyHole_] = evaluateEmptyHole
+}
+
+init_evaluatorArr()
+
