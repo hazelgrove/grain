@@ -64,7 +64,9 @@ let del_eval_tag = (num : Number) => {
     WasmI32.toGrain(addr) : (Array<Number>)
 }
 
+@disableGC
 export let rec del_all_eval_tag = (num : Number) => {
+    // print("del_all_eval_tag")
     let arr = del_eval_tag(num);
     if (arr[0] == _TAG_BinBoolOp_) {
         arr[2] = del_all_eval_tag(arr[2]);
@@ -112,9 +114,10 @@ let fff = (x : Number) => {
 
 let evaluatorArr = Array.make(8, fff)
 
+@disableGC
 export let rec evaluate = (prog) => {
-    //print(prog)
-    //print(is_unevaluated(prog))
+    // print(prog)
+    // print(is_unevaluated(prog))
     if (is_unevaluated(prog)) {
         let arr = del_eval_tag(prog)
         let tag = arr[0]
