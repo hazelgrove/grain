@@ -1,3 +1,4 @@
+import * from "hazel_util"
 import Array from "array"
 import WasmI32 from "runtime/unsafe/wasmi32"
 import { coerceNumberToWasmI32 } from "runtime/numbers"
@@ -11,58 +12,6 @@ let _TAG_BOOLOP_OR_ : Number = 1;
 let _TAG_BoolLit_ : Number = 0;
 let _TAG_BinBoolOp_ : Number = 1;
 let _TAG_EmptyHole_ : Number = 2;
-
-@disableGC
-export let unevaluated = (arr : Array<Number>) => {
-    let addr = WasmI32.fromGrain(arr)
-    let addr = WasmI32.add(addr, 1n) // toGrain() will check whether it is a number
-    let addr = WasmI32.toGrain(addr) : Number
-    addr
-}
-
-@disableGC
-export let boxed = (arr : Array<Number>) => {
-    let addr = WasmI32.fromGrain(arr)
-    let addr = WasmI32.add(addr, 3n) // toGrain() will check whether it is a number
-    let addr = WasmI32.toGrain(addr) : Number
-    addr
-}
-
-@disableGC
-export let indet = (arr : Array<Number>) => {
-    let addr = WasmI32.fromGrain(arr)
-    let addr = WasmI32.add(addr, 7n) // toGrain() will check whether it is a number
-    let addr = WasmI32.toGrain(addr) : Number
-    addr
-}
-
-@disableGC
-export let is_unevaluated = (x : Number) => {
-    let addr = WasmI32.fromGrain(x)
-    let addr = WasmI32.remS(addr, 8n)
-    WasmI32.eq(addr, 1n)
-}
-
-@disableGC
-export let is_boxed = (x : Number) => {
-    let addr = WasmI32.fromGrain(x)
-    let addr = WasmI32.remS(addr, 8n)
-    WasmI32.eq(addr, 3n)
-}
-
-@disableGC
-export let is_indet = (x : Number) => {
-    let addr = WasmI32.fromGrain(x)
-    let addr = WasmI32.remS(addr, 8n)
-    WasmI32.eq(addr, 7n)
-}
-
-@disableGC
-let del_eval_tag = (num : Number) => {
-    let addr = WasmI32.fromGrain(num);
-    let addr = WasmI32.and(addr, 0xFFFFFFF8n);
-    WasmI32.toGrain(addr) : (Array<Number>)
-}
 
 @disableGC
 export let rec del_all_eval_tag = (num : Number) => {
