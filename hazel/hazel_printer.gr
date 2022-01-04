@@ -1,0 +1,54 @@
+import * from "./hazel_util"
+import * from "./hazel_tag"
+import String from "string"
+import RString from "runtime/string"
+import Array from "array"
+
+let fff = (x : Number) => {
+    "x + 5"
+}
+
+let printerArr = Array.make(8, fff)
+
+export let rec printer = (prog) => {
+    // print(prog)
+    // print(is_unevaluated(prog))
+    let arr = del_eval_tag(prog)
+    let tag = arr[0]
+    (printerArr[tag])(prog)
+}
+
+let printBoolLit = (prog) => {
+    let arr = del_eval_tag(prog)
+    let value = if (arr[1] == 1) {"true"} else {"false"}
+    let ret = String.concat("(BoolLit ", value)
+    let ret = String.concat(ret, ")")
+    ret
+}
+
+let printEmptyHole = (prog) => {
+    let arr = del_eval_tag(prog)
+    let metavar = arr[1];
+    let ret = RString.toString(metavar)
+    let ret = String.concat("(EmptyHole ", ret)
+    let ret = String.concat(ret, " 0())")
+    ret
+}
+
+let printBinBoolOp = (prog) => {
+    let arr = del_eval_tag(prog)
+    let op = if(arr[1] == _TAG_BOOLOP_AND_) {"Add"} else {"Or"};
+    let ret = String.concat("(BinBoolOp ", op)
+    let s1 = printer(arr[2])
+    let s2 = printer(arr[3])
+    let ret = String.concat(ret, s1)
+    let ret = String.concat(ret, s2)
+    let ret = String.concat(ret, ")")
+    ret
+}
+
+export let init_printerArr = () => {
+    printerArr[_TAG_BoolLit_] = printBoolLit
+    printerArr[_TAG_BinBoolOp_] = printBinBoolOp
+    printerArr[_TAG_EmptyHole_] = printEmptyHole
+}

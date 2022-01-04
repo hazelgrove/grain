@@ -1,0 +1,5 @@
+export let _TAG_BoolLit_ : Number = 0;
+export let _TAG_BinBoolOp_ : Number = 1;
+export let _TAG_EmptyHole_ : Number = 2;
+export let _TAG_BOOLOP_AND_ : Number = 0;
+export let _TAG_BOOLOP_OR_ : Number = 1;
