@@ -4,156 +4,22 @@ import String from "string"
 import WasmI32 from "runtime/unsafe/wasmi32"
 import { coerceNumberToWasmI32 } from "runtime/numbers"
 import PrintWasm from "runtime/unsafe/printWasm"
-import * from "./hazel_util"
-import * from "./hazel_tag"
+import HPrinter from "./hazel_printer"
+import {evaluate, init_evaluatorArr} from "./hazel_evaluator"
+import * from "./hazel_builder"
 
-export enum BoolOp { And, Or };
+HPrinter.init_printerArr()
+init_evaluatorArr()
 
-@disableGC
-export let buildBoolLit = (x : Bool) => {
-    let ret = Array.make(2, 0);
-    ret[0] = _TAG_BoolLit_;
-    ret[1] = if(x) {1} else {0};
-    unevaluated(ret)
-}
-
-@disableGC
-export let buildBinBoolOp = (op : BoolOp, x, y) => {
-    let ret = Array.make(4, 0);
-    ret[0] = _TAG_BinBoolOp_;
-    ret[1] = if(op == And) {_TAG_BOOLOP_AND_} else {_TAG_BOOLOP_OR_};
-    ret[2] = x;
-    ret[3] = y;
-    unevaluated(ret)
-}
-
-@disableGC
-export let buildEmptyHole = (metavar : Number) => {
-    let ret = Array.make(2, 0);
-    ret[0] = _TAG_EmptyHole_;
-    ret[1] = metavar;
-    unevaluated(ret)
-}
-
-let fff = (x : Number) => {
-    "x + 5"
-}
-
-let printerArr = Array.make(8, fff)
-
-let rec printer = (prog) => {
-    // print(prog)
-    // print(is_unevaluated(prog))
-    let arr = del_eval_tag(prog)
-    let tag = arr[0]
-    (printerArr[tag])(prog)
-}
-
-let printBoolLit = (prog) => {
-    let arr = del_eval_tag(prog)
-    let value = if (arr[1] == 1) {"true"} else {"false"}
-    let ret = String.concat("(BoolLit ", value)
-    let ret = String.concat(ret, ")")
-    ret
-}
-
-let printEmptyHole = (prog) => {
-    let arr = del_eval_tag(prog)
-    let metavar = arr[1];
-    let ret = RString.toString(metavar)
-    let ret = String.concat("(EmptyHole ", ret)
-    let ret = String.concat(ret, " 0())")
-    ret
-}
-
-let printBinBoolOp = (prog) => {
-    let arr = del_eval_tag(prog)
-    let op = if(arr[1] == _TAG_BOOLOP_AND_) {"Add"} else {"Or"};
-    let ret = String.concat("(BinBoolOp ", op)
-    let s1 = printer(arr[2])
-    let s2 = printer(arr[3])
-    let ret = String.concat(ret, s1)
-    let ret = String.concat(ret, s2)
-    let ret = String.concat(ret, ")")
-    ret
-}
-
-export let init_printerArr = () => {
-    printerArr[_TAG_BoolLit_] = printBoolLit
-    printerArr[_TAG_BinBoolOp_] = printBinBoolOp
-    printerArr[_TAG_EmptyHole_] = printEmptyHole
-}
+export evaluate
 
 export let print_prog = (prog) => {
     print(HPrinter.printer(prog))
 }
 
-let ggg = (x : Number) => {
-    x + 5
-}
-
-let evaluatorArr = Array.make(8, ggg)
-
-@disableGC
-export let rec evaluate = (prog) => {
-    // print(prog)
-    // print(is_unevaluated(prog))
-    if (is_unevaluated(prog)) {
-        let arr = del_eval_tag(prog)
-        let tag = arr[0]
-        (evaluatorArr[tag])(prog)
-    } else {
-        prog
-    }
-}
-
-@disableGC
-let evaluateBoolLit = (prog) => {
-    print("evaluateBoolLit")
-    let arr = del_eval_tag(prog)
-    boxed(arr)
-}
-
-@disableGC
-let evaluateEmptyHole = (prog) => {
-    print("evaluateEmptyHole")
-    let arr = del_eval_tag(prog)
-    indet(arr)
-}
-
-@disableGC
-let evaluateBinBoolOp = (prog) => {
-    print("evaluateBinBoolOp")
-    let arr = del_eval_tag(prog)
-    arr[2] = evaluate(arr[2])
-    arr[3] = evaluate(arr[3])
-    if (is_boxed(arr[2]) && is_boxed(arr[3])) {
-        let arr1 = del_eval_tag(arr[2])
-        let arr2 = del_eval_tag(arr[3])
-        if (arr[1] == _TAG_BOOLOP_AND_) {
-            let result = arr1[1] * arr2[1]
-            let ret = buildBoolLit(result == 1)
-            boxed(del_eval_tag(ret))
-        } else if (arr[1] == _TAG_BOOLOP_OR_) {
-            let result = (arr1[1] + arr2[1]) % 2
-            let ret = buildBoolLit(result == 1)
-            boxed(del_eval_tag(ret))
-        } else {
-            indet(arr) // TODO: ERROR
-        }
-    } else {
-        indet(arr)
-    }
-}
-
-export let init_evaluatorArr = () => {
-    evaluatorArr[_TAG_BoolLit_] = evaluateBoolLit
-    evaluatorArr[_TAG_BinBoolOp_] = evaluateBinBoolOp
-    evaluatorArr[_TAG_EmptyHole_] = evaluateEmptyHole
-}
-
-
-
+export buildBoolLit
+export buildBinBoolOpAnd
+export buildEmptyHole
 
 
 

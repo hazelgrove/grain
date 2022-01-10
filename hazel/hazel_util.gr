@@ -22,7 +22,7 @@ export let boxed = (arr : Array<Number>) => {
 @disableGC
 export let indet = (arr : Array<Number>) => {
     let addr = WasmI32.fromGrain(arr)
-    let addr = WasmI32.add(addr, 7n) // toGrain() will check whether it is a number
+    let addr = WasmI32.add(addr, 2n) // toGrain() will check whether it is a number
     let addr = WasmI32.toGrain(addr) : Number
     addr
 }
@@ -42,10 +42,17 @@ export let is_boxed = (x : Number) => {
 }
 
 @disableGC
+export let is_number = (x : Number) => {
+    let addr = WasmI32.fromGrain(x)
+    let addr = WasmI32.remS(addr, 8n)
+    WasmI32.eq(addr, 3n)
+}
+
+@disableGC
 export let is_indet = (x : Number) => {
     let addr = WasmI32.fromGrain(x)
     let addr = WasmI32.remS(addr, 8n)
-    WasmI32.eq(addr, 7n)
+    WasmI32.eq(addr, 2n)
 }
 
 @disableGC

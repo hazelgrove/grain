@@ -1,17 +1,36 @@
 import Hazel from "hazel"
 
-Hazel.init_printerArr()
-Hazel.init_evaluatorArr()
+6 : Number
+let x = WasmI32.fromGrain(6)
+WasmI32.toGrain(x) : HazelType
+
+add() : (HazelType, HazelType) => HazelType 
 
 let p1 = Hazel.buildBoolLit(true);
-let p2 = Hazel.buildBoolLit(true);
+let p2 = Hazel.buildBoolLit(false);
 let p3 = Hazel.buildEmptyHole(312);
-let prog = Hazel.buildBinBoolOp(Hazel.And, p1, p3);
+let prog = Hazel.buildBinBoolOpAnd(p1, p2);
 
-//Hazel.print_prog(prog)
-// let prog = Hazel.evaluate(prog)
-// print("finish first step")
-// Hazel.print_prog(prog)
+Hazel.print_prog(prog)
+let prog = Hazel.evaluate(prog)
+print("finish first step")
+Hazel.print_prog(prog)
 //print(p1)
 //print(Hazel.testgrain(Array.make(4, 7)))
+let x = emptyhole 7
+Hazel.add(6, x)
+
+1101
+
+[address]010
+
+
+a+b
+
+check whether they are both numbers  ==> normal addition
+
+if one of them is indet, we can build a syntax tree and return
+
+[] 8
+
 
