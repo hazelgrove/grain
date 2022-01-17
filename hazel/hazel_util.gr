@@ -4,48 +4,29 @@ import { coerceNumberToWasmI32 } from "runtime/numbers"
 import PrintWasm from "runtime/unsafe/printWasm"
 
 @disableGC
-export let unevaluated = (arr : Array<Number>) => {
-    let addr = WasmI32.fromGrain(arr)
-    let addr = WasmI32.add(addr, 1n) // toGrain() will check whether it is a number
-    let addr = WasmI32.toGrain(addr) : Number
-    addr
+export let to_number = (arr : Array<Number>) => {
+    let arr = WasmI32.fromGrain(arr)
+    let arr = WasmI32.add(arr, 2n)
+    WasmI32.toGrain(arr) : Number
 }
 
 @disableGC
-export let boxed = (arr : Array<Number>) => {
-    let addr = WasmI32.fromGrain(arr)
-    let addr = WasmI32.add(addr, 3n) // toGrain() will check whether it is a number
-    let addr = WasmI32.toGrain(addr) : Number
-    addr
+export let to_array = (x : Number) => {
+    let arr = WasmI32.fromGrain(x)
+    let arr = WasmI32.sub(arr, 2n)
+    WasmI32.toGrain(arr) : (Array<Number>)
 }
 
 @disableGC
-export let indet = (arr : Array<Number>) => {
-    let addr = WasmI32.fromGrain(arr)
-    let addr = WasmI32.add(addr, 2n) // toGrain() will check whether it is a number
-    let addr = WasmI32.toGrain(addr) : Number
-    addr
+export let bool_to_number = (b : Bool) => {
+    let arr = WasmI32.fromGrain(x)
+    WasmI32.toGrain(arr) : (Number)
 }
 
 @disableGC
-export let is_unevaluated = (x : Number) => {
-    let addr = WasmI32.fromGrain(x)
-    let addr = WasmI32.remS(addr, 8n)
-    WasmI32.eq(addr, 1n)
-}
-
-@disableGC
-export let is_boxed = (x : Number) => {
-    let addr = WasmI32.fromGrain(x)
-    let addr = WasmI32.remS(addr, 8n)
-    WasmI32.eq(addr, 3n)
-}
-
-@disableGC
-export let is_number = (x : Number) => {
-    let addr = WasmI32.fromGrain(x)
-    let addr = WasmI32.remS(addr, 8n)
-    WasmI32.eq(addr, 3n)
+export let to_bool = (x : Number) => {
+    let arr = WasmI32.fromGrain(x)
+    WasmI32.toGrain(arr) : (Bool)
 }
 
 @disableGC
@@ -56,9 +37,8 @@ export let is_indet = (x : Number) => {
 }
 
 @disableGC
-export let del_eval_tag = (num : Number) => {
-    let addr = WasmI32.fromGrain(num);
-    let addr = WasmI32.and(addr, 0xFFFFFFF8n);
-    WasmI32.toGrain(addr) : (Array<Number>)
+export let is_const = (x : Number) => {
+    let addr = WasmI32.fromGrain(x)
+    let addr = WasmI32.remS(addr, 8n)
+    WasmI32.eq(addr, 6n)
 }
-

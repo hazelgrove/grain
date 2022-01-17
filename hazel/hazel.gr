@@ -7,6 +7,7 @@ import PrintWasm from "runtime/unsafe/printWasm"
 import HPrinter from "./hazel_printer"
 import {evaluate, init_evaluatorArr} from "./hazel_evaluator"
 import * from "./hazel_builder"
+import HFunc from "./hazel_function"
 
 HPrinter.init_printerArr()
 init_evaluatorArr()
@@ -14,12 +15,16 @@ init_evaluatorArr()
 export evaluate
 
 export let print_prog = (prog) => {
-    print(HPrinter.printer(prog))
+    if (is_indet) {
+        print(HPrinter.indet_printer(prog))
+    } else {
+        print(prog)
+    }
 }
 
 export buildBoolLit
 export buildBinBoolOpAnd
 export buildEmptyHole
-
-
-
+export let htrue = bool_to_number(true)
+export let hfalse = bool_to_number(false)
+export HFunc.and

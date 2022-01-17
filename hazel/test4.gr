@@ -1,7 +1,9 @@
-import WasmI32 from "runtime/unsafe/wasmi32"
-import Int32 from "int32"
+import Hazel from "hazel"
 
-@disableGC
-export let myadd = (a, b) => {
-    a + b
-}
+let p1 = Hazel.htrue;
+let p2 = Hazel.hfalse;
+let p3 = Hazel.buildEmptyHole(312);
+
+let result = Hazel.and(p1, p2)
+
+Hazel.print_prog(result)

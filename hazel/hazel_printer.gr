@@ -11,18 +11,18 @@ let fff = (x : Number) => {
 let printerArr = Array.make(8, fff)
 
 @disableGC
-export let rec printer = (prog) => {
+export let rec indet_printer = (prog) => {
     // print(prog)
     // print(is_unevaluated(prog))
-    let arr = del_eval_tag(prog)
+    let arr = to_array(prog)
     let tag = arr[0]
     (printerArr[tag])(prog)
 }
 
 @disableGC
 let printBoolLit = (prog) => {
-    let arr = del_eval_tag(prog)
-    let value = if (arr[1] == 1) {"true"} else {"false"}
+    let arr = to_array(prog)
+    let value = if (to_bool(arr[1])) {"true"} else {"false"}
     let ret = String.concat("(BoolLit ", value)
     let ret = String.concat(ret, ")")
     ret
@@ -30,7 +30,7 @@ let printBoolLit = (prog) => {
 
 @disableGC
 let printEmptyHole = (prog) => {
-    let arr = del_eval_tag(prog)
+    let arr = to_array(prog)
     let metavar = arr[1];
     let ret = RString.toString(metavar)
     let ret = String.concat("(EmptyHole ", ret)
@@ -40,7 +40,7 @@ let printEmptyHole = (prog) => {
 
 @disableGC
 let printBinBoolOp = (prog) => {
-    let arr = del_eval_tag(prog)
+    let arr = to_array(prog)
     let op = if(arr[1] == _TAG_BOOLOP_AND_) {"And"} else {"Or"};
     let ret = String.concat("(BinBoolOp ", op)
     let s1 = printer(arr[2])
