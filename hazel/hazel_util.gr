@@ -19,8 +19,8 @@ export let to_array = (x : Number) => {
 
 @disableGC
 export let bool_to_number = (b : Bool) => {
-    let arr = WasmI32.fromGrain(x)
-    WasmI32.toGrain(arr) : (Number)
+    let b = WasmI32.fromGrain(b)
+    WasmI32.toGrain(b) : (Number)
 }
 
 @disableGC
@@ -32,13 +32,13 @@ export let to_bool = (x : Number) => {
 @disableGC
 export let is_indet = (x : Number) => {
     let addr = WasmI32.fromGrain(x)
-    let addr = WasmI32.remS(addr, 8n)
+    let addr = WasmI32.remU(addr, 8n)
     WasmI32.eq(addr, 2n)
 }
 
 @disableGC
 export let is_const = (x : Number) => {
     let addr = WasmI32.fromGrain(x)
-    let addr = WasmI32.remS(addr, 8n)
+    let addr = WasmI32.remU(addr, 8n)
     WasmI32.eq(addr, 6n)
 }

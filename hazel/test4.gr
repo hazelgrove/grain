@@ -6,4 +6,4 @@ let p3 = Hazel.buildEmptyHole(312);
 
 let result = Hazel.and(p1, p2)
 
-Hazel.print_prog(result)
+Hazel.print_prog(result);

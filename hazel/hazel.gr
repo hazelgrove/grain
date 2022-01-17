@@ -5,17 +5,14 @@ import WasmI32 from "runtime/unsafe/wasmi32"
 import { coerceNumberToWasmI32 } from "runtime/numbers"
 import PrintWasm from "runtime/unsafe/printWasm"
 import HPrinter from "./hazel_printer"
-import {evaluate, init_evaluatorArr} from "./hazel_evaluator"
 import * from "./hazel_builder"
-import HFunc from "./hazel_function"
+import * from "./hazel_function"
+import * from "./hazel_util"
 
 HPrinter.init_printerArr()
-init_evaluatorArr()
-
-export evaluate
 
 export let print_prog = (prog) => {
-    if (is_indet) {
+    if (is_indet(prog)) {
         print(HPrinter.indet_printer(prog))
     } else {
         print(prog)
@@ -25,6 +22,8 @@ export let print_prog = (prog) => {
 export buildBoolLit
 export buildBinBoolOpAnd
 export buildEmptyHole
+
+export and
+
 export let htrue = bool_to_number(true)
 export let hfalse = bool_to_number(false)
-export HFunc.and

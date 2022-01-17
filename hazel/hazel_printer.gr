@@ -43,8 +43,8 @@ let printBinBoolOp = (prog) => {
     let arr = to_array(prog)
     let op = if(arr[1] == _TAG_BOOLOP_AND_) {"And"} else {"Or"};
     let ret = String.concat("(BinBoolOp ", op)
-    let s1 = printer(arr[2])
-    let s2 = printer(arr[3])
+    let s1 = indet_printer(arr[2])
+    let s2 = indet_printer(arr[3])
     let ret = String.concat(ret, s1)
     let ret = String.concat(ret, s2)
     let ret = String.concat(ret, ")")
