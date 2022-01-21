@@ -2,19 +2,20 @@ import Array from "array"
 import WasmI32 from "runtime/unsafe/wasmi32"
 import { coerceNumberToWasmI32 } from "runtime/numbers"
 import PrintWasm from "runtime/unsafe/printWasm"
+import * from "syntax_tree"
 
 @disableGC
-export let to_number = (arr : Array<Number>) => {
+export let to_number = (arr : DHExp) => {
     let arr = WasmI32.fromGrain(arr)
     let arr = WasmI32.add(arr, 2n)
     WasmI32.toGrain(arr) : Number
 }
 
 @disableGC
-export let to_array = (x : Number) => {
+export let to_DHExp = (x : Number) => {
     let arr = WasmI32.fromGrain(x)
     let arr = WasmI32.sub(arr, 2n)
-    WasmI32.toGrain(arr) : (Array<Number>)
+    WasmI32.toGrain(arr) : (DHExp)
 }
 
 @disableGC

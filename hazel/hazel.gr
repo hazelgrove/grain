@@ -4,16 +4,14 @@ import String from "string"
 import WasmI32 from "runtime/unsafe/wasmi32"
 import { coerceNumberToWasmI32 } from "runtime/numbers"
 import PrintWasm from "runtime/unsafe/printWasm"
-import HPrinter from "./hazel_printer"
-import * from "./hazel_builder"
-import * from "./hazel_function"
+import * from "./syntax_tree"
+import * from "./syntax_tree_helper"
 import * from "./hazel_util"
-
-HPrinter.init_printerArr()
+import * from "./hazel_function"
 
 export let print_prog = (prog) => {
     if (is_indet(prog)) {
-        print(HPrinter.indet_printer(prog))
+        print(to_DHExp(prog))
     } else {
         print(prog)
     }

@@ -1,4 +1,4 @@
-import * from "./hazel_builder"
+import * from "./syntax_tree_helper"
 import * from "./hazel_util"
 
 @disableGC
