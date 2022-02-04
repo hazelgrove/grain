@@ -3,6 +3,7 @@ import WasmI32 from "runtime/unsafe/wasmi32"
 import { coerceNumberToWasmI32 } from "runtime/numbers"
 import PrintWasm from "runtime/unsafe/printWasm"
 import * from "syntax_tree"
+import Gc from "runtime/gc"
 
 @disableGC
 export let to_number = (arr : DHExp) => {
@@ -42,4 +43,17 @@ export let is_const = (x : Number) => {
     let addr = WasmI32.fromGrain(x)
     let addr = WasmI32.remU(addr, 8n)
     WasmI32.eq(addr, 6n)
+}
+
+@disableGC
+export let decNumberRef = (x : Number) => {
+    let arr = WasmI32.fromGrain(x)
+    let rem = WasmI32.remU(arr, 8n)
+    if (WasmI32.eq(rem, 2n)) {
+        let arr = WasmI32.sub(arr, 2n)
+        Gc.decRef(arr)
+        void
+    } else {
+        void
+    }
 }

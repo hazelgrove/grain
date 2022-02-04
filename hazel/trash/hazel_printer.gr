@@ -4,21 +4,6 @@ import String from "string"
 import RString from "runtime/string"
 import Array from "array"
 
-let fff = (x : Number) => {
-    "x + 5"
-}
-
-let printerArr = Array.make(8, fff)
-
-@disableGC
-export let rec indet_printer = (prog) => {
-    // print(prog)
-    // print(is_unevaluated(prog))
-    let arr = to_array(prog)
-    let tag = arr[0]
-    (printerArr[tag])(prog)
-}
-
 @disableGC
 let printBoolLit = (prog) => {
     let arr = to_array(prog)
