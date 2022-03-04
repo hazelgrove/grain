@@ -4,7 +4,7 @@ import Gc from "runtime/gc"
 let p1 = Hazel.htrue;
 let p2 = Hazel.hfalse;
 let p3 = Hazel.buildEmptyHole(312);
-print(Gc.getRefCount(p3))
+// print(Gc.getRefCount(p3))
 
 // let result = Hazel.and(p1, p3)
 // //let result = Hazel.and(result, p3)

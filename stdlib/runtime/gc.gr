@@ -158,12 +158,21 @@ export let free = (userPtr: WasmI32) => {
   Malloc.free(userPtr - _HEADER_SIZE)
 }
 
+let indet_to_ptr = (userPtr: WasmI32) => {
+  if  (WasmI32.eq(userPtr & 0b0111n, 2n) && WasmI32.ne(userPtr, 0n)) {
+    WasmI32.sub(userPtr, 2n)
+  } else {
+    userPtr
+  }
+}
+
 export let incRef = (userPtr: WasmI32) => {
   if (
     (WasmI32.eqz(userPtr & Tags._GRAIN_GENERIC_TAG_MASK) ||
     WasmI32.eq(userPtr & 0b0111n, 2n)) &&
     WasmI32.ne(userPtr, 0n)
   ) {
+    let userPtr = indet_to_ptr(userPtr)
     // if (_DEBUG) {
     //   logIncRef(userPtr, getRefCount(userPtr))
     //   void;
@@ -179,6 +188,7 @@ let rec decRef = (userPtr: WasmI32, ignoreZeros: Bool) => {
     WasmI32.eq(userPtr & 0b0111n, 2n)) &&
     WasmI32.ne(userPtr, 0n)
   ) {
+    let userPtr = indet_to_ptr(userPtr)
     let refCount = getRefCount(userPtr)
     // if (_DEBUG) {
     //   logDecRef(userPtr, refCount, ignoreZeros)
@@ -251,7 +261,7 @@ export let decRef = userPtr => decRef(userPtr, false)
 
 export let getRefCount = (value) => {
   let userPtr = WasmI32.fromGrain(value)
-  let ret = if (WasmI32.eqz(userPtr & ) &&
+  let ret = if (WasmI32.eqz(userPtr) &&
     WasmI32.ne(userPtr, 0n)) {
     WasmI32.toGrain((getRefCount(userPtr) * 2n) + 1n) : Number
   } else if (WasmI32.eq(userPtr & Tags._GRAIN_GENERIC_TAG_MASK, 2n)) {
