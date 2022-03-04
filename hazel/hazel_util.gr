@@ -3,57 +3,62 @@ import WasmI32 from "runtime/unsafe/wasmi32"
 import { coerceNumberToWasmI32 } from "runtime/numbers"
 import PrintWasm from "runtime/unsafe/printWasm"
 import * from "syntax_tree"
-import Gc from "runtime/gc"
+import Memory from "runtime/unsafe/memory"
 
 @disableGC
-export let to_number = (arr : DHExp) => {
-    let arr = WasmI32.fromGrain(arr)
+export let rec to_number = (arr0 : DHExp) => {
+    let arr = WasmI32.fromGrain(arr0)
     let arr = WasmI32.add(arr, 2n)
-    WasmI32.toGrain(arr) : Number
+    let ret = WasmI32.toGrain(arr) : Number
+    Memory.decRef(WasmI32.fromGrain(arr0))
+    Memory.decRef(WasmI32.fromGrain(to_number))
+    ret
 }
 
 @disableGC
-export let to_DHExp = (x : Number) => {
+export let rec to_DHExp = (x : Number) => {
     let arr = WasmI32.fromGrain(x)
     let arr = WasmI32.sub(arr, 2n)
-    WasmI32.toGrain(arr) : (DHExp)
+    let ret = WasmI32.toGrain(arr) : (DHExp)
+    Memory.decRef(WasmI32.fromGrain(x))
+    Memory.decRef(WasmI32.fromGrain(to_DHExp))
+    ret
 }
 
 @disableGC
-export let bool_to_number = (b : Bool) => {
-    let b = WasmI32.fromGrain(b)
-    WasmI32.toGrain(b) : (Number)
+export let rec bool_to_number = (b0 : Bool) => {
+    let b = WasmI32.fromGrain(b0)
+    let ret = WasmI32.toGrain(b) : (Number)
+    Memory.decRef(WasmI32.fromGrain(b0))
+    Memory.decRef(WasmI32.fromGrain(bool_to_number))
+    ret
 }
 
 @disableGC
-export let to_bool = (x : Number) => {
+export let rec to_bool = (x : Number) => {
     let arr = WasmI32.fromGrain(x)
-    WasmI32.toGrain(arr) : (Bool)
+    let ret = WasmI32.toGrain(arr) : (Bool)
+    Memory.decRef(WasmI32.fromGrain(x))
+    Memory.decRef(WasmI32.fromGrain(to_bool))
+    ret
 }
 
 @disableGC
-export let is_indet = (x : Number) => {
+export let rec is_indet = (x : Number) => {
     let addr = WasmI32.fromGrain(x)
     let addr = WasmI32.remU(addr, 8n)
-    WasmI32.eq(addr, 2n)
+    let ret = WasmI32.eq(addr, 2n)
+    Memory.decRef(WasmI32.fromGrain(x))
+    Memory.decRef(WasmI32.fromGrain(is_indet))
+    ret
 }
 
 @disableGC
-export let is_const = (x : Number) => {
+export let rec is_const = (x : Number) => {
     let addr = WasmI32.fromGrain(x)
     let addr = WasmI32.remU(addr, 8n)
-    WasmI32.eq(addr, 6n)
-}
-
-@disableGC
-export let decNumberRef = (x : Number) => {
-    let arr = WasmI32.fromGrain(x)
-    let rem = WasmI32.remU(arr, 8n)
-    if (WasmI32.eq(rem, 2n)) {
-        let arr = WasmI32.sub(arr, 2n)
-        Gc.decRef(arr)
-        void
-    } else {
-        void
-    }
+    let ret = WasmI32.eq(addr, 6n)
+    Memory.decRef(WasmI32.fromGrain(x))
+    Memory.decRef(WasmI32.fromGrain(is_const))
+    ret
 }

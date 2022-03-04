@@ -53,7 +53,7 @@ let mut _DEBUG = false
 let _HEADER_SIZE = 8n
 
 let indet_to_ptr = (userPtr: WasmI32) => {
-  if  (WasmI32.eq(userPtr & 0b0111n, 2n)) {
+  if (WasmI32.eq(userPtr & 0b0111n, 0b0010n)) {
     (WasmI32.sub(userPtr, 2n), true)
   } else {
     (userPtr, false)
@@ -68,7 +68,7 @@ let ptr_to_indet = (userPtr: WasmI32, is_indet: Bool) => {
   }
 }
 
-/*
+
 //Debugging functions:
 import foreign wasm fd_sync : (WasmI32) -> WasmI32 from "wasi_snapshot_preview1"
 
@@ -147,7 +147,7 @@ let logDecRef = (userPtr: WasmI32, refCount: WasmI32, ignoreZeros) => {
   Malloc.free(refCountStr)
 }
 
-*/
+
 
 let getRefCount = (userPtr: WasmI32) => {
   WasmI32.load(userPtr - _HEADER_SIZE, 0n)
@@ -174,15 +174,15 @@ export let free = (userPtr: WasmI32) => {
   Malloc.free(userPtr - _HEADER_SIZE)
 }
 
- let incRef = (userPtr: WasmI32) => {
+let incRef = (userPtr: WasmI32) => {
   if (
     WasmI32.eqz(userPtr & Tags._GRAIN_GENERIC_TAG_MASK) &&
     WasmI32.ne(userPtr, 0n)
   ) {
-    // if (_DEBUG) {
-    //   logIncRef(userPtr, getRefCount(userPtr))
-    //   void;
-    // }
+    if (_DEBUG) {
+      logIncRef(userPtr, getRefCount(userPtr))
+      void;
+    }
     setRefCount(userPtr, getRefCount(userPtr) + 1n)
   }
   userPtr
@@ -194,10 +194,10 @@ let rec decRef = (userPtr: WasmI32, ignoreZeros: Bool) => {
     WasmI32.ne(userPtr, 0n)
   ) {
     let refCount = getRefCount(userPtr)
-    // if (_DEBUG) {
-    //   logDecRef(userPtr, refCount, ignoreZeros)
-    //   void
-    // }
+    if (_DEBUG) {
+      logDecRef(userPtr, refCount, ignoreZeros)
+      void
+    }
 
     if (WasmI32.eqz(refCount)) {
       if (ignoreZeros) {
@@ -262,6 +262,7 @@ let indet_closure = (userPtr: WasmI32, f) => {
   let (userPtr, is_indet) = indet_to_ptr(userPtr)
   let userPtr = f(userPtr)
   ptr_to_indet(userPtr, is_indet)
+  userPtr
 }
 
 export let incRef = (userPtr: WasmI32) => indet_closure(userPtr, incRef)

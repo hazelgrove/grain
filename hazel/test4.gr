@@ -1,16 +1,20 @@
 import Hazel from "hazel"
 //import Gc from "runtime/gc"
-//print(1)
-//let p1 = Hazel.htrue;
-// print(1)
-// let p2 = Hazel.hfalse;
 print(1)
-let p3 = Hazel.buildEmptyHole(312);
+let p1 = Hazel.htrue;
+print(1)
+// let p2 = Hazel.hfalse;
+//print(1)
+//let p3 = Hazel.buildEmptyHole(312);
 // print(1)
 // print(Gc.getRefCount(p3))
 
-// let result = Hazel.and(p1, p3)
-// //let result = Hazel.and(result, p3)
+//let result = Hazel.and(p1, p3)
+//Hazel.print_prog(result)
+//print(1)
+//let result = Hazel.and(result, p3)
+//Hazel.print_prog(result)
+//print(1)
 // print(Gc.getRefCount(p3))
 
 // Hazel.print_prog(p1);
