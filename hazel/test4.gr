@@ -1,9 +1,12 @@
 import Hazel from "hazel"
-import Gc from "runtime/gc"
-
-let p1 = Hazel.htrue;
-let p2 = Hazel.hfalse;
+//import Gc from "runtime/gc"
+//print(1)
+//let p1 = Hazel.htrue;
+// print(1)
+// let p2 = Hazel.hfalse;
+print(1)
 let p3 = Hazel.buildEmptyHole(312);
+// print(1)
 // print(Gc.getRefCount(p3))
 
 // let result = Hazel.and(p1, p3)
