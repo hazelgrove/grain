@@ -8,14 +8,8 @@ const v8 = require("v8");
  *   This method should be used with care. Changing settings after the VM has started may result
  *   in unpredictable behavior, including crashes and data loss; or it may simply do nothing.
  *
- * This seems to work for our needs with Node 14, but we should be cautious when updating.
+ * This seems to work for our needs with Node 16, but we should be cautious when updating.
  */
-if (
-  process.versions.node.startsWith("14.") ||
-  process.versions.node.startsWith("15.")
-) {
-  v8.setFlagsFromString("--experimental-wasm-bigint");
-}
 v8.setFlagsFromString("--experimental-wasm-return-call");
 
 const program = require("commander");
@@ -165,6 +159,10 @@ program
     "--parser-debug-level <level>",
     "debugging level for parser output"
   )
+  .forwardOption(
+    "--memory-base <addr>",
+    "set the base address for the Grain heap"
+  )
   .forwardOption("--source-map", "generate source maps")
   .forwardOption("--strict-sequence", "enable strict sequencing")
   .forwardOption(
@@ -211,6 +209,10 @@ program
 program
   .command("doc <file>")
   .description("generate documentation for a grain file")
+  .forwardOption(
+    "--current-version <version>",
+    "provide a version to use as current when generating markdown for `@since` and `@history` attributes"
+  )
   .action(
     wrapAction(function (file, options, program) {
       doc(file, program);

@@ -83,14 +83,6 @@ export let free = (userPtr: WasmI32) -> Void
 export let incRef = (userPtr: WasmI32) -> WasmI32
 
 /**
- * Decrements the reference count of the given pointer if it is greater than zero
- *
- * @param userPtr: The pointer whose reference count should be decremented
- * @returns The given pointer
- */
-export let decRefIgnoreZeros = (userPtr: WasmI32) -> WasmI32
-
-/**
  * Decrements the reference count of the given pointer. An error is thrown if the
  * reference count is not greater than zero.
  *
@@ -100,7 +92,7 @@ export let decRefIgnoreZeros = (userPtr: WasmI32) -> WasmI32
 export let decRef = (userPtr: WasmI32) -> WasmI32
 ```
 
-When writing code in the runtime, `decRefIgnoreZeros` should never be used. It exists solely to support the cleanup step of compiled functions. The reference count-managing functions are safe to use with non-pointers; if a non-pointer is passed
+The reference count-managing functions are safe to use with non-pointers; if a non-pointer is passed
 to them, it will be returned without any side effects. **However**, it should be noted that these functions are not safe to use with arbitrary (untagged) `WasmXX` (`WasmI32`/`WasmI64`/etc) values, which is why the use of such types is only permitted in `@disableGC` blocks—so that the compiler does not insert `incRef`/`decRef` calls.
 
 ### Garbage Collection in Compiled Programs
@@ -133,9 +125,9 @@ Note that `load_swap` is one of the aforementioned exceptions which does not `in
 
 ## Disabling the Garbage Collector
 
-There are times in which the garbage collector is not desired in Grain code. The typical example of this is the implementation of the core runtime (for example the garbage collector itself), which involves working with native WebAssembly values. Consequently, Grain provides two mechanisms for disabling the garbage collector, either on a per-function or a per-file basis.
+There are times in which the garbage collector is not desired in Grain code. The typical example of this is the implementation of the core runtime (the garbage collector and memory allocator). Generally, even for many parts of the runtime, the garbage collector should not be disabled as it is fairly easy to cause memory leaks or memory corruption. That said, Grain provides two mechanisms for disabling the garbage collector, either on a per-function or a per-file/program basis.
 
-First, it is possible to annotate functions with `@disableGC`. This will compile the annotated function with no garbage collection instructions. Second, the following compiler flags impact the emission of GC instructions:
+First, it is possible to annotate functions with `@disableGC`. This will compile the annotated function with no garbage collection instructions. It should be noted that this is not necessary to write low-level Grain code, and you can view the document on [@unsafe and low-level programming](./low_level_programming.md) to learn more. Second, the following compiler flags impact the emission of GC instructions:
 
 - `--no-gc`: disables the garbage collector, allocations are still done via `malloc`
 - `--compilation-mode=runtime`: GC doesn't exist (so no GC instructions will be emitted); implicit allocations can't be reclaimed. See `runtime.md` for more details.

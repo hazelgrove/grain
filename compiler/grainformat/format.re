@@ -52,7 +52,7 @@ type sugared_pattern_item =
   | RegularPattern(Parsetree.pattern)
   | SpreadPattern(Parsetree.pattern);
 
-let get_original_code_snippet = (location: Location.t, source: array(string)) => {
+let get_original_code = (location: Location.t, source: array(string)) => {
   let (_, start_line, startc, _) =
     Locations.get_raw_pos_info(location.loc_start);
   let (_, end_line, endc, _) = Locations.get_raw_pos_info(location.loc_end);
@@ -73,36 +73,6 @@ let get_original_code_snippet = (location: Location.t, source: array(string)) =>
       };
       text^;
     };
-  } else {
-    raise(Error(FormatterError("Requested beyond end of original source")));
-  };
-};
-
-let get_original_code = (location: Location.t, source: array(string)) => {
-  let (_, start_line, startc, _) =
-    Locations.get_raw_pos_info(location.loc_start);
-  let (_, end_line, endc, _) = Locations.get_raw_pos_info(location.loc_end);
-
-  let text = ref("");
-  if (Array.length(source) > end_line - 1) {
-    if (start_line == end_line) {
-      let full_line = source[start_line - 1];
-
-      let without_trailing = Str.string_before(full_line, endc);
-
-      text := text^ ++ without_trailing;
-    } else {
-      for (line in start_line - 1 to end_line - 1) {
-        if (line + 1 == start_line) {
-          text := text^ ++ Str.string_after(source[line], startc) ++ "\n";
-        } else if (line + 1 == end_line) {
-          text := text^ ++ source[line];
-        } else {
-          text := text^ ++ source[line] ++ "\n";
-        };
-      };
-    };
-    text^;
   } else {
     raise(Error(FormatterError("Requested beyond end of original source")));
   };
@@ -588,8 +558,7 @@ let rec block_item_iterator =
       };
 
     if (disable_formatting) {
-      let original_code =
-        get_original_code_snippet(get_loc(item), original_source);
+      let original_code = get_original_code(get_loc(item), original_source);
 
       let orig_doc =
         Doc.concat([
@@ -1401,7 +1370,7 @@ and print_constant =
   // we get the original code here to ensure it's well formatted and retains the
   // approach of the original code, e.g. char format, number format
   Doc.text(
-    get_original_code_snippet(loc, original_source),
+    get_original_code(loc, original_source),
   );
 }
 
@@ -2565,6 +2534,9 @@ and print_expression =
         ]),
       );
 
+    | PExpPrim0(prim0) =>
+      let original_code = get_original_code(expr.pexp_loc, original_source);
+      Doc.text(original_code);
     | PExpPrim1(prim1, expression) =>
       let original_code = get_original_code(expr.pexp_loc, original_source);
       Doc.text(original_code);
@@ -2763,7 +2735,7 @@ and print_expression =
           ])
         | _ =>
           Doc.concat([
-            Doc.line,
+            if (true_is_block) {Doc.space} else {Doc.line},
             Doc.text("else"),
             if (true_is_block) {
               false_made_block := true;
@@ -2986,37 +2958,9 @@ and print_expression =
             ~comments=comments_in_expression,
             expression,
           ),
-          switch (parsed_type.ptyp_desc) {
-          | PTyConstr(locidentifier, parsedtypes) =>
-            switch (parsedtypes) {
-            | [] =>
-              Doc.concat([
-                Doc.text(":"),
-                Doc.space,
-                print_type(~original_source, ~comments, parsed_type),
-              ])
-
-            | _ =>
-              Doc.concat([
-                Doc.text(":"),
-                Doc.space,
-                Doc.indent(
-                  Doc.concat([
-                    Doc.softLine,
-                    Doc.lparen, // TODO needed to fix compiler bug (trailing type annotation needs paren, #866)
-                    print_type(~original_source, ~comments, parsed_type),
-                    Doc.rparen,
-                  ]),
-                ),
-              ])
-            }
-          | _ =>
-            Doc.concat([
-              Doc.text(":"),
-              Doc.space,
-              print_type(~original_source, ~comments, parsed_type),
-            ])
-          },
+          Doc.text(":"),
+          Doc.space,
+          print_type(~original_source, ~comments, parsed_type),
         ]),
       );
     | PExpLambda(patterns, expression) =>
@@ -4191,6 +4135,7 @@ let toplevel_print =
 let format_ast =
     (
       ~original_source: array(string),
+      ~eol: Fs_access.eol,
       parsed_program: Parsetree.parsed_program,
     ) => {
   let get_loc = (stmt: Parsetree.toplevel_stmt) => {
@@ -4227,5 +4172,5 @@ let format_ast =
 
   let final_doc = Doc.concat([top_level_stmts, Doc.hardLine]);
 
-  Doc.toString(~width=80, final_doc);
+  Doc.toString(~width=80, ~eol, final_doc);
 };
