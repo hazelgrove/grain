@@ -14,8 +14,8 @@ module String = Misc.Stdlib.String;
 
 let rec identifier = ppf =>
   fun
-  | IdentName(s) => pp_print_string(ppf, s)
-  | IdentExternal(p, s) => fprintf(ppf, "%a::%s", identifier, p, s);
+  | IdentName(s) => pp_print_string(ppf, s.txt)
+  | IdentExternal(p, s) => fprintf(ppf, "%a::%s", identifier, p, s.txt);
 
 /* Print an identifier */
 
@@ -33,7 +33,14 @@ let add_unique = id =>
       Ident.add(id, Ident.unique_toplevel_name(id), unique_names^)
   };
 
-let ident = (ppf, id) => pp_print_string(ppf, ident_name(id));
+let ident = (ppf, id) => {
+  let name = ident_name(id);
+  if (Oprint.parenthesized_ident(name)) {
+    fprintf(ppf, "(%s)", name);
+  } else {
+    pp_print_string(ppf, name);
+  };
+};
 
 /* Print a path */
 
@@ -44,7 +51,12 @@ let non_shadowed_pervasive =
   | PExternal(PIdent(id), s, _pos) as path =>
     Ident.same(id, ident_pervasives)
     && (
-      try(Path.same(path, Env.lookup_type(IdentName(s), printing_env^))) {
+      try(
+        Path.same(
+          path,
+          Env.lookup_type(IdentName(mknoloc(s)), printing_env^),
+        )
+      ) {
       | Not_found => true
       }
     )
@@ -1036,7 +1048,7 @@ let dummy = {
   type_newtype_level: None,
   type_loc: Location.dummy_loc,
   type_path: PIdent({stamp: (-1), name: "", flags: 0}),
-  type_allocation: HeapAllocated,
+  type_allocation: Managed,
 };
 
 let hide_rec_items =

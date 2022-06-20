@@ -1,11 +1,11 @@
-type optimization_level =
-  | Level_zero
-  | Level_one
-  | Level_two
-  | Level_three;
+type profile =
+  | Release;
 
 /** The Grain stdlib directory, based on the current configuration */
 let stdlib_directory: unit => option(string);
+
+/** The WASI polyfill path, based on the current configuration */
+let wasi_polyfill_path: unit => option(string);
 
 /** The list of directories to search for modules in, based on the current configuration */
 
@@ -40,9 +40,9 @@ let wasi_polyfill: ref(option(string));
 
 let use_start_section: ref(bool);
 
-/** Whether optimizations should be run */
+/** Compilation profile, e.g. release for production builds */
 
-let optimization_level: ref(optimization_level);
+let profile: ref(option(profile));
 
 // [NOTE] This default is here because it is used in multiple locations,
 //        and it doesn't make sense for it to be "owned" by any of them.
@@ -61,10 +61,6 @@ let include_dirs: ref(list(string));
 /** The location of the pervasives module. */
 
 let stdlib_dir: ref(option(string));
-
-/** The base path where all Grain files for the program reside */
-
-let base_path: ref(string);
 
 /** Whether color output should be enabled */
 
@@ -185,9 +181,6 @@ let preserve_all_configs: (unit => 'a) => 'a;
 /** Wraps the given thunk with extractors for compiler command-line options */
 
 let with_cli_options: 'a => Cmdliner.Term.t('a);
-
-/** Runs the given thunk with the given base_path value */
-let with_base_path: (string, unit => 'a) => 'a;
 
 /** Applies compile flags provided at the start of a file */
 

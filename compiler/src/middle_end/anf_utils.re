@@ -186,29 +186,16 @@ let rec anf_count_vars = a =>
       List.map(((_, c)) => comp_count_vars(c), binds);
     let rec count_binds = (ptr, i32, i64, f32, f64, binds) => {
       switch (global, binds) {
-      | (Global(_), [_, ...rest]) =>
-        count_binds(ptr, i32, i64, f32, f64, rest)
-      | (_, [(_, {comp_allocation_type: HeapAllocated}), ...rest]) =>
+      | (Global, [_, ...rest]) => count_binds(ptr, i32, i64, f32, f64, rest)
+      | (_, [(_, {comp_allocation_type: Managed}), ...rest]) =>
         count_binds(ptr + 1, i32, i64, f32, f64, rest)
-      | (
-          _,
-          [(_, {comp_allocation_type: StackAllocated(WasmI32)}), ...rest],
-        ) =>
+      | (_, [(_, {comp_allocation_type: Unmanaged(WasmI32)}), ...rest]) =>
         count_binds(ptr, i32 + 1, i64, f32, f64, rest)
-      | (
-          _,
-          [(_, {comp_allocation_type: StackAllocated(WasmI64)}), ...rest],
-        ) =>
+      | (_, [(_, {comp_allocation_type: Unmanaged(WasmI64)}), ...rest]) =>
         count_binds(ptr, i32, i64 + 1, f32, f64, rest)
-      | (
-          _,
-          [(_, {comp_allocation_type: StackAllocated(WasmF32)}), ...rest],
-        ) =>
+      | (_, [(_, {comp_allocation_type: Unmanaged(WasmF32)}), ...rest]) =>
         count_binds(ptr, i32, i64, f32 + 1, f64, rest)
-      | (
-          _,
-          [(_, {comp_allocation_type: StackAllocated(WasmF64)}), ...rest],
-        ) =>
+      | (_, [(_, {comp_allocation_type: Unmanaged(WasmF64)}), ...rest]) =>
         count_binds(ptr, i32, i64, f32, f64 + 1, rest)
       | (_, []) => (ptr, i32, i64, f32, f64)
       };

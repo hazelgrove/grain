@@ -2,6 +2,16 @@ const path = require("path");
 const { execSync } = require("child_process");
 const fs = require("fs");
 
+function flagsFromOptions(program, options) {
+  const flags = [];
+  program.options.forEach((option) => {
+    if (!option.forward) return;
+    const flag = option.toFlag(options);
+    if (flag) flags.push(flag);
+  });
+  return flags;
+}
+
 function getGrainc() {
   const grainc = path.join(__dirname, "grainc.exe");
 
@@ -17,14 +27,13 @@ function getGrainc() {
 
 const grainc = getGrainc();
 
-function execGrainc(commandOrFile = "", program, execOpts = { stdio: "pipe" }) {
-  const flags = [];
-  const options = program.opts();
-  program.options.forEach((option) => {
-    if (!option.forward) return;
-    const flag = option.toFlag(options);
-    if (flag) flags.push(flag);
-  });
+function execGrainc(
+  commandOrFile = "",
+  options,
+  program,
+  execOpts = { stdio: "inherit" }
+) {
+  const flags = flagsFromOptions(program, options);
 
   return execSync(`${grainc} ${flags.join(" ")} ${commandOrFile}`, execOpts);
 }
@@ -46,18 +55,11 @@ const graindoc = getGraindoc();
 
 function execGraindoc(
   commandOrFile = "",
+  options,
   program,
-  execOpts = { stdio: "pipe" }
+  execOpts = { stdio: "inherit" }
 ) {
-  const flags = [];
-  // Inherit compiler flags passed to the parent
-  const options = program.parent.options.concat(program.options);
-  const opts = { ...program.parent.opts(), ...program.opts() };
-  options.forEach((option) => {
-    if (!option.forward) return;
-    const flag = option.toFlag(opts);
-    if (flag) flags.push(flag);
-  });
+  const flags = flagsFromOptions(program, options);
 
   return execSync(`${graindoc} ${flags.join(" ")} ${commandOrFile}`, execOpts);
 }
@@ -79,16 +81,11 @@ const grainformat = getGrainformat();
 
 function execGrainformat(
   commandOrFile = "",
+  options,
   program,
-  execOpts = { stdio: "pipe" }
+  execOpts = { stdio: "inherit" }
 ) {
-  const flags = [];
-  const options = program.opts();
-  program.options.forEach((option) => {
-    if (!option.forward) return;
-    const flag = option.toFlag(options);
-    if (flag) flags.push(flag);
-  });
+  const flags = flagsFromOptions(program, options);
 
   return execSync(
     `${grainformat} ${flags.join(" ")} ${commandOrFile}`,
@@ -96,8 +93,30 @@ function execGrainformat(
   );
 }
 
+function getGrainlsp() {
+  const grainlsp = path.join(__dirname, "grainlsp.exe");
+
+  // TODO: Maybe make an installable path & check it?
+  if (process.pkg || !fs.existsSync(grainlsp)) {
+    const node = process.execPath;
+    const grainlsp_js = path.join(__dirname, "grainlsp.js");
+    return `"${node}" ${grainlsp_js}`;
+  }
+
+  return `${grainlsp}`;
+}
+
+const grainlsp = getGrainlsp();
+
+function execGrainlsp(options, program, execOpts = { stdio: "inherit" }) {
+  const flags = flagsFromOptions(program, options);
+
+  return execSync(`${grainlsp} ${flags.join(" ")}`, execOpts);
+}
+
 module.exports = {
   grainc: execGrainc,
   graindoc: execGraindoc,
   grainformat: execGrainformat,
+  grainlsp: execGrainlsp,
 };

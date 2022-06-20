@@ -36,7 +36,6 @@ type partial =
   | Partial
   | Total;
 
-type export_flag = Asttypes.export_flag = | Nonexported | Exported;
 type rec_flag = Asttypes.rec_flag = | Nonrecursive | Recursive;
 type mut_flag = Asttypes.mut_flag = | Mutable | Immutable;
 
@@ -189,6 +188,7 @@ type prim1 =
     | AllocateTuple
     | AllocateBytes
     | AllocateString
+    | AllocateBigInt
     | NewInt32
     | NewInt64
     | NewFloat32
@@ -509,6 +509,7 @@ type import_declaration = {
 
 [@deriving sexp]
 type export_declaration = {
+  tex_id: Ident.t,
   tex_path: Path.t,
   [@sexp_drop_if sexp_locs_disabled]
   tex_loc: Location.t,
@@ -528,12 +529,12 @@ type value_description = {
 
 [@deriving sexp]
 type toplevel_stmt_desc =
-  | TTopForeign(export_flag, value_description)
+  | TTopForeign(value_description)
   | TTopImport(import_declaration)
   | TTopExport(list(export_declaration))
   | TTopData(list(data_declaration))
-  | TTopLet(export_flag, rec_flag, mut_flag, list(value_binding))
-  | TTopException(export_flag, extension_constructor)
+  | TTopLet(rec_flag, mut_flag, list(value_binding))
+  | TTopException(extension_constructor)
   | TTopExpr(expression);
 
 [@deriving sexp]

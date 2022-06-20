@@ -184,6 +184,7 @@ type prim1 =
     | AllocateTuple
     | AllocateBytes
     | AllocateString
+    | AllocateBigInt
     | NewInt32
     | NewInt64
     | NewFloat32
@@ -321,7 +322,16 @@ type allocation_type =
   | MInt64(int64)
   | MFloat32(float)
   | MFloat64(float)
-  | MRational(int32, int32);
+  | MRational({
+      numerator_flags: list(Bigint_flags.t),
+      numerator_limbs: array(int64),
+      denominator_flags: list(Bigint_flags.t),
+      denominator_limbs: array(int64),
+    })
+  | MBigInt({
+      flags: list(Bigint_flags.t),
+      limbs: array(int64),
+    });
 
 [@deriving sexp]
 type tag_op =
@@ -452,8 +462,9 @@ type import_setup =
 
 [@deriving sexp]
 type import = {
-  mimp_mod: Ident.t,
-  mimp_name: Ident.t,
+  mimp_id: Ident.t,
+  mimp_mod: string,
+  mimp_name: string,
   mimp_type: import_type,
   mimp_kind: import_kind,
   mimp_setup: import_setup,
@@ -466,7 +477,10 @@ type export =
       ex_function_name: string,
       ex_function_internal_name: string,
     })
-  | GlobalExport({ex_global_name: Ident.t});
+  | GlobalExport({
+      ex_global_name: string,
+      ex_global_internal_name: string,
+    });
 
 [@deriving sexp]
 type mash_function = {

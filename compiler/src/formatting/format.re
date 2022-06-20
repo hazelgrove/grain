@@ -37,12 +37,12 @@ let op_precedence = fn =>
   };
 let list_cons = "[...]";
 
-type error =
-  | Illegal_parse(string)
-  | Unsupported_syntax(string)
-  | FormatterError(string);
+exception IllegalParse(string);
+exception FormatterError(string);
 
-exception Error(error);
+type compilation_error =
+  | ParseError(exn)
+  | InvalidCompilationState;
 
 type sugared_list_item =
   | Regular(Parsetree.expression)
@@ -74,7 +74,7 @@ let get_original_code = (location: Location.t, source: array(string)) => {
       text^;
     };
   } else {
-    raise(Error(FormatterError("Requested beyond end of original source")));
+    raise(FormatterError("Requested beyond end of original source"));
   };
 };
 
@@ -1012,7 +1012,7 @@ and resugar_pattern_list_inner = (patterns: list(Parsetree.pattern)) => {
     | PPatConstruct(innerfunc, innerpatterns) =>
       let func =
         switch (innerfunc.txt) {
-        | IdentName(name) => name
+        | IdentName({txt: name}) => name
         | _ => ""
         };
 
@@ -1028,11 +1028,7 @@ and resugar_pattern_list_inner = (patterns: list(Parsetree.pattern)) => {
     | _ => [RegularPattern(arg1), SpreadPattern(arg2)]
     }
   | _ =>
-    raise(
-      Error(
-        Illegal_parse("List pattern cons should always have two patterns"),
-      ),
-    )
+    raise(IllegalParse("List pattern cons should always have two patterns"))
   };
 }
 
@@ -1041,7 +1037,7 @@ and is_empty_list = (expr: Parsetree.expression) => {
   | PExpId(loc) =>
     let loc_txt =
       switch (loc.txt) {
-      | IdentName(name) => name
+      | IdentName({txt: name}) => name
       | _ => ""
       };
 
@@ -1123,9 +1119,7 @@ and resugar_list_inner = (expressions: list(Parsetree.expression)) =>
   | _ =>
     // Grain syntax makes it impossible to construct a list cons without
     // two arguments, but we'll check just to make sure
-    raise(
-      Error(Illegal_parse("List cons should always have two expressions")),
-    )
+    raise(IllegalParse("List cons should always have two expressions"))
   }
 
 and check_for_pattern_pun = (pat: Parsetree.pattern) =>
@@ -1273,7 +1267,7 @@ and print_pattern =
     | PPatConstruct(location, patterns) =>
       let func =
         switch (location.txt) {
-        | IdentName(name) => name
+        | IdentName({txt: name}) => name
         | _ => ""
         };
       if (func == list_cons) {
@@ -1311,16 +1305,35 @@ and print_pattern =
         );
       };
 
-    | PPatOr(pattern1, pattern2) =>
-      /* currently unsupported so just replace with the original source */
-      let original_code = get_original_code(pat.ppat_loc, original_source);
+    | PPatOr(pattern1, pattern2) => (
+        Doc.group(
+          Doc.concat([
+            Doc.group(
+              print_pattern(~original_source, ~comments, ~next_loc, pattern1),
+            ),
+            Doc.space,
+            Doc.text("|"),
+            Doc.line,
+            Doc.group(
+              print_pattern(~original_source, ~comments, ~next_loc, pattern2),
+            ),
+          ]),
+        ),
+        false,
+      )
 
-      (Doc.text(original_code), false);
-    | PPatAlias(pattern, loc) =>
-      /* currently unsupported so just replace with the original source */
-      let original_code = get_original_code(pat.ppat_loc, original_source);
-
-      (Doc.text(original_code), false);
+    | PPatAlias(pattern, loc) => (
+        Doc.group(
+          Doc.concat([
+            print_pattern(~original_source, ~comments, ~next_loc, pattern),
+            Doc.space,
+            Doc.text("as"),
+            Doc.space,
+            Doc.text(loc.txt),
+          ]),
+        ),
+        false,
+      )
     };
 
   let (pattern, parens) = printed_pattern;
@@ -1376,13 +1389,13 @@ and print_constant =
 
 and print_ident = (ident: Identifier.t) => {
   switch (ident) {
-  | IdentName(name) =>
+  | IdentName({txt: name}) =>
     if (infixop(name) || prefixop(name)) {
       Doc.concat([Doc.lparen, Doc.text(name), Doc.rparen]);
     } else {
       Doc.text(name);
     }
-  | IdentExternal(externalIdent, second) =>
+  | IdentExternal(externalIdent, {txt: second}) =>
     Doc.concat([
       print_ident(externalIdent),
       Doc.text("."),
@@ -1758,8 +1771,7 @@ and print_infix_application =
       rhs,
     ]);
 
-  | _ =>
-    raise(Error(Illegal_parse("Formatter error, wrong number of args ")))
+  | _ => raise(IllegalParse("Formatter error, wrong number of args "))
   };
 }
 
@@ -1880,7 +1892,7 @@ and print_arg_lambda =
       },
     );
 
-  | _ => raise(Error(Illegal_parse("Called on a non-lambda")))
+  | _ => raise(IllegalParse("Called on a non-lambda"))
   };
 }
 
@@ -2030,7 +2042,7 @@ and print_other_application =
   | [first, second] when infixop(function_name) =>
     print_infix_application(~expressions, ~original_source, ~comments, func)
   | _ when infixop(function_name) =>
-    raise(Error(Illegal_parse("Formatter error, wrong number of args ")))
+    raise(IllegalParse("Formatter error, wrong number of args "))
   | _ when function_name == list_cons =>
     resugar_list(~original_source, ~comments, expressions)
   | [first_expr, ..._]
@@ -2128,7 +2140,7 @@ and get_function_name = (expr: Parsetree.expression) => {
 
   | PExpId({txt: id}) =>
     switch (id) {
-    | IdentName(name) => name
+    | IdentName(name) => name.txt
     | _ => ""
     }
   | _ => ""
@@ -2355,15 +2367,13 @@ and print_expression =
         print_ident(txt),
       ])
     | PExpRecordSet(expression, {txt, _}, expression2) =>
-      Doc.concat([
-        print_expression(~original_source, ~comments, expression),
-        Doc.dot,
-        print_ident(txt),
-        Doc.space,
-        Doc.equal,
-        Doc.space,
-        print_expression(~original_source, ~comments, expression2),
-      ])
+      let left =
+        Doc.concat([
+          print_expression(~original_source, ~comments, expression),
+          Doc.dot,
+          print_ident(txt),
+        ]);
+      print_assignment(~original_source, ~comments, left, expression2);
     | PExpMatch(expression, match_branches) =>
       let arg =
         Doc.concat([
@@ -3107,99 +3117,92 @@ and print_expression =
         print_expression(~original_source, ~comments, expression1),
       ])
     | PExpAssign(expression, expression1) =>
-      switch (expression1.pexp_desc) {
-      | PExpApp(func, expressions) =>
-        let function_name = get_function_name(func);
-
-        let trimmed_operator = String.trim(function_name);
-
-        let left = print_expression(~original_source, ~comments, expression);
-
-        let left_matches_first =
-          switch (expressions) {
-          | [expr, ...remainder] =>
-            print_expression(~original_source, ~comments, expr) == left
-          | _ => false
-          };
-
-        if (left_matches_first) {
-          // +=, -=, *=, /=, and %=
-          switch (trimmed_operator) {
-          | "+"
-          | "-"
-          | "*"
-          | "/"
-          | "%" =>
-            let sugared_op = Doc.text(" " ++ trimmed_operator ++ "= ");
-            Doc.concat([
-              print_expression(~original_source, ~comments, expression),
-              sugared_op,
-              switch (expressions) {
-              | [] =>
-                raise(
-                  Error(
-                    Illegal_parse("Sugared op needs at least one expression"),
-                  ),
-                )
-              | [expression] =>
-                let expr =
-                  print_expression(~original_source, ~comments, expression);
-                switch (expression.pexp_desc) {
-                | PExpIf(_) =>
-                  Doc.indent(
-                    print_expression(~original_source, ~comments, expression),
-                  )
-                | _ => expr
-                };
-              | [expression1, expression2, ...rest] =>
-                let expr =
-                  print_expression(~original_source, ~comments, expression2);
-                switch (expression2.pexp_desc) {
-                | PExpIf(_) =>
-                  Doc.indent(
-                    print_expression(
-                      ~original_source,
-                      ~comments,
-                      expression2,
-                    ),
-                  )
-                | _ => expr
-                };
-              },
-            ]);
-          | _ =>
-            Doc.concat([
-              print_expression(~original_source, ~comments, expression),
-              Doc.space,
-              Doc.equal,
-              Doc.space,
-              print_expression(~original_source, ~comments, expression1),
-            ])
-          };
-        } else {
-          Doc.concat([
-            print_expression(~original_source, ~comments, expression),
-            Doc.space,
-            Doc.equal,
-            Doc.space,
-            print_expression(~original_source, ~comments, expression1),
-          ]);
-        };
-
-      | _ =>
-        Doc.concat([
-          print_expression(~original_source, ~comments, expression),
-          Doc.space,
-          Doc.equal,
-          Doc.space,
-          print_expression(~original_source, ~comments, expression1),
-        ])
-      }
-
+      let left = print_expression(~original_source, ~comments, expression);
+      print_assignment(~original_source, ~comments, left, expression1);
     | /** Used for modules without body expressions */ PExpNull => Doc.nil
     };
 
   expression_doc;
+}
+and print_assignment = (~original_source, ~comments, left, value) => {
+  switch (value.pexp_desc) {
+  | PExpApp(func, expressions) =>
+    let function_name = get_function_name(func);
+
+    let trimmed_operator = String.trim(function_name);
+
+    let left_matches_first =
+      switch (expressions) {
+      | [expr, ...remainder] =>
+        print_expression(~original_source, ~comments, expr) == left
+      | _ => false
+      };
+
+    if (left_matches_first) {
+      // +=, -=, *=, /=, and %=
+      switch (trimmed_operator) {
+      | "+"
+      | "-"
+      | "*"
+      | "/"
+      | "%" =>
+        let sugared_op = Doc.text(" " ++ trimmed_operator ++ "= ");
+        Doc.concat([
+          left,
+          sugared_op,
+          switch (expressions) {
+          | [] =>
+            raise(IllegalParse("Sugared op needs at least one expression"))
+          | [expression] =>
+            let expr =
+              print_expression(~original_source, ~comments, expression);
+            switch (expression.pexp_desc) {
+            | PExpIf(_) =>
+              Doc.indent(
+                print_expression(~original_source, ~comments, expression),
+              )
+            | _ => expr
+            };
+          | [expression1, expression2, ...rest] =>
+            let expr =
+              print_expression(~original_source, ~comments, expression2);
+            switch (expression2.pexp_desc) {
+            | PExpIf(_) =>
+              Doc.indent(
+                print_expression(~original_source, ~comments, expression2),
+              )
+            | _ => expr
+            };
+          },
+        ]);
+      | _ =>
+        Doc.concat([
+          left,
+          Doc.space,
+          Doc.equal,
+          Doc.space,
+          print_expression(~original_source, ~comments, value),
+        ])
+      };
+    } else {
+      Doc.concat([
+        left,
+        Doc.space,
+        Doc.equal,
+        Doc.space,
+        print_expression(~original_source, ~comments, value),
+      ]);
+    };
+
+  | _ =>
+    Doc.concat([
+      left,
+      Doc.space,
+      Doc.equal,
+      Doc.space,
+      print_expression(~original_source, ~comments, value),
+    ])
+  };
 }
 and print_value_bind =
     (
@@ -3723,13 +3726,20 @@ let data_print =
     Doc.concat([Doc.comma, Doc.hardLine]),
     List.map(
       data => {
-        let (expt, decl) = data;
+        let (expt, decl: Parsetree.data_declaration) = data;
+
+        let data_comments =
+          Comment_utils.get_comments_inside_location(
+            ~location=decl.pdata_loc,
+            comments,
+          );
+
         Doc.concat([
           switch ((expt: Asttypes.export_flag)) {
           | Nonexported => Doc.nil
           | Exported => Doc.text("export ")
           },
-          print_data(~original_source, ~comments, decl),
+          print_data(~original_source, ~comments=data_comments, decl),
         ]);
       },
       datas,
@@ -4130,6 +4140,29 @@ let toplevel_print =
     };
 
   Doc.group(without_comments);
+};
+
+let parse_source = (program_str: string) => {
+  switch (
+    {
+      let lines = String.split_on_char('\n', program_str);
+      let eol = Fs_access.determine_eol(List.nth_opt(lines, 0));
+      let compile_state =
+        Compile.compile_string(
+          ~is_root_file=true,
+          ~hook=stop_after_parse,
+          ~name=?None,
+          program_str,
+        );
+
+      (compile_state, lines, eol);
+    }
+  ) {
+  | exception exn => Error(ParseError(exn))
+  | ({cstate_desc: Parsed(parsed_program)}, lines, eol) =>
+    Ok((parsed_program, Array.of_list(lines), eol))
+  | _ => Error(InvalidCompilationState)
+  };
 };
 
 let format_ast =

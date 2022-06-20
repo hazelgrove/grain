@@ -851,7 +851,7 @@ let new_declaration = (newtype, manifest) => {
   type_newtype_level: newtype,
   type_loc: Location.dummy_loc,
   type_path: PIdent({stamp: (-1), name: "", flags: 0}),
-  type_allocation: HeapAllocated,
+  type_allocation: Managed,
 };
 
 let instance_constructor = (~in_pattern=?, cstr) => {
@@ -2187,7 +2187,7 @@ let complete_type_list = (~allow_absent=false, env, nl1, lv2, mty2, nl2, tl2) =>
       try({
         let path =
           Env.lookup_type(
-            concat_longident(Identifier.IdentName("Pkg"), n),
+            concat_longident(Identifier.IdentName(mknoloc("Pkg")), n),
             env',
           );
 
@@ -3246,17 +3246,8 @@ let nondep_extension_constructor = (env, id, ext) =>
       switch (args) {
       | TConstrSingleton => ReprValue(WasmI32)
       | TConstrTuple(args) =>
-        ReprFunction(
-          List.map(
-            arg =>
-              Type_utils.wasm_repr_of_allocation_type(
-                Type_utils.get_allocation_type(env, arg),
-              ),
-            args,
-          ),
-          [WasmI32],
-          Indirect,
-        )
+        // All native Grain function args are Managed (i32) types.
+        ReprFunction(List.map(_ => WasmI32, args), [WasmI32], Indirect)
       };
 
     clear_hash();
@@ -3304,7 +3295,7 @@ let maybe_pointer_type = (env, typ) =>
   | TTyConstr(p, _args, _abbrev) =>
     try({
       let type_decl = Env.find_type(p, env);
-      type_decl.type_allocation == HeapAllocated;
+      type_decl.type_allocation == Managed;
     }) {
     | Not_found => true
     /* This can happen due to e.g. missing -I options,
@@ -3316,6 +3307,6 @@ let maybe_pointer_type = (env, typ) =>
 
 let rec lid_of_path = (~hash="") =>
   fun
-  | Path.PIdent(id) => Identifier.IdentName(hash ++ Ident.name(id))
+  | Path.PIdent(id) => Identifier.IdentName(mknoloc(hash ++ Ident.name(id)))
   | Path.PExternal(p1, s, _) =>
-    Identifier.IdentExternal(lid_of_path(p1), hash ++ s);
+    Identifier.IdentExternal(lid_of_path(p1), mknoloc(hash ++ s));

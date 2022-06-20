@@ -201,7 +201,7 @@ Returns:
 
 |type|description|
 |----|-----------|
-|`Bool`|`true` if the RegExp matches the string, otherwise `false`|
+|`Bool`|`true` if the RegExp matches the string or `false` otherwise|
 
 Examples:
 
@@ -446,3 +446,4 @@ Examples:
 ```grain
 assert Regex.replaceAll(Result.unwrap(Regex.make("o")), "skoot", "r") == "skrrt"
 ```
+

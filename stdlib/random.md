@@ -5,7 +5,7 @@ title: Random
 Pseudo-random number generation.
 
 <details disabled>
-<summary tabindex="-1">Added in <code>next</code></summary>
+<summary tabindex="-1">Added in <code>0.5.0</code></summary>
 No other changes yet.
 </details>
 
@@ -20,11 +20,7 @@ Type declarations included in the Random module.
 ### Random.**Random**
 
 ```grain
-record Random {
-  seed: Int64,
-  counter: Int64,
-  initialized: Bool,
-}
+type Random
 ```
 
 ## Values
@@ -34,7 +30,7 @@ Functions for working with pseudo-random number generators.
 ### Random.**make**
 
 <details disabled>
-<summary tabindex="-1">Added in <code>next</code></summary>
+<summary tabindex="-1">Added in <code>0.5.0</code></summary>
 No other changes yet.
 </details>
 
@@ -59,7 +55,7 @@ Returns:
 ### Random.**makeUnseeded**
 
 <details disabled>
-<summary tabindex="-1">Added in <code>next</code></summary>
+<summary tabindex="-1">Added in <code>0.5.0</code></summary>
 No other changes yet.
 </details>
 
@@ -78,7 +74,7 @@ Returns:
 ### Random.**nextInt32**
 
 <details disabled>
-<summary tabindex="-1">Added in <code>next</code></summary>
+<summary tabindex="-1">Added in <code>0.5.0</code></summary>
 No other changes yet.
 </details>
 
@@ -103,7 +99,7 @@ Returns:
 ### Random.**nextInt64**
 
 <details disabled>
-<summary tabindex="-1">Added in <code>next</code></summary>
+<summary tabindex="-1">Added in <code>0.5.0</code></summary>
 No other changes yet.
 </details>
 
@@ -128,7 +124,7 @@ Returns:
 ### Random.**nextInt32InRange**
 
 <details disabled>
-<summary tabindex="-1">Added in <code>next</code></summary>
+<summary tabindex="-1">Added in <code>0.5.0</code></summary>
 No other changes yet.
 </details>
 
@@ -156,7 +152,7 @@ Returns:
 ### Random.**nextInt64InRange**
 
 <details disabled>
-<summary tabindex="-1">Added in <code>next</code></summary>
+<summary tabindex="-1">Added in <code>0.5.0</code></summary>
 No other changes yet.
 </details>
 

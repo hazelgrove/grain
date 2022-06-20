@@ -1,6 +1,6 @@
 (lang dune 2.3)
 (name grain)
-(version 0.4.6)
+(version 0.5.1)
 (using menhir 2.0)
 
 ; Flip this to `true` when we want to generate opam files again
@@ -29,6 +29,18 @@
 (package
   (name grainformat)
   (synopsis "Grain formatter"))
+
+(package
+  (name grainlsp)
+  (synopsis "Grain LSP"))
+
+(package
+  (name grain_language_server)
+  (synopsis "Grain Language Server Protocol"))
+
+(package
+ (name grain_formatting)
+ (synopsis "Grain formatting"))
 
 (package
   (name grain_linking)

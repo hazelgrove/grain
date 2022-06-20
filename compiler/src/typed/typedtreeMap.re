@@ -82,10 +82,11 @@ module MakeMap =
   and map_bindings = (rec_flag, mut_flag, binds) =>
     List.map(map_binding, binds)
 
-  and map_match_branch = ({mb_pat, mb_body} as mb) => {
+  and map_match_branch = ({mb_pat, mb_body, mb_guard} as mb) => {
     let mb_pat = map_pattern(mb_pat);
     let mb_body = map_expression(mb_body);
-    {...mb, mb_pat, mb_body};
+    let mb_guard = Option.map(map_expression, mb_guard);
+    {...mb, mb_pat, mb_body, mb_guard};
   }
 
   and map_match_branches = branches => List.map(map_match_branch, branches)
@@ -130,13 +131,8 @@ module MakeMap =
       | TTopForeign(_)
       | TTopImport(_)
       | TTopExport(_) => stmt.ttop_desc
-      | TTopLet(exportflag, recflag, mutflag, binds) =>
-        TTopLet(
-          exportflag,
-          recflag,
-          mutflag,
-          map_bindings(recflag, mutflag, binds),
-        )
+      | TTopLet(recflag, mutflag, binds) =>
+        TTopLet(recflag, mutflag, map_bindings(recflag, mutflag, binds))
       | TTopExpr(e) => TTopExpr(map_expression(e))
       };
     Map.leave_toplevel_stmt({...stmt, ttop_desc});

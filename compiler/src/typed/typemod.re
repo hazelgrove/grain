@@ -84,7 +84,7 @@ let type_open_ = (~used_slot=?, ~toplevel=?, env, mod_) => {
         mod_.pimp_val,
       )
     ) {
-    | Some({txt: IdentName(name)}) => name
+    | Some({txt: IdentName({txt: name})}) => name
     | Some(_) => failwith("multilevel mod name")
     | None =>
       "%"
@@ -92,7 +92,7 @@ let type_open_ = (~used_slot=?, ~toplevel=?, env, mod_) => {
            mod_.pimp_path.txt,
          )
     };
-  let mod_name = Identifier.IdentName(mod_name);
+  let mod_name = Identifier.IdentName(mknoloc(mod_name));
   let path =
     Typetexp.lookup_module(
       ~load=true,
@@ -442,7 +442,7 @@ let type_module = (~toplevel=false, funct_body, anchor, env, sstr /*scope*/) => 
       | Nonexported => None
       };
     let foreign = {
-      ttop_desc: TTopForeign(e, desc),
+      ttop_desc: TTopForeign(desc),
       ttop_loc: loc,
       ttop_env: env,
       ttop_attributes: Typetexp.type_attributes(attributes),
@@ -465,7 +465,7 @@ let type_module = (~toplevel=false, funct_body, anchor, env, sstr /*scope*/) => 
       };
     let (defs, newenv, attrs) = Translprim.transl_prim(newenv, desc);
     let prim = {
-      ttop_desc: TTopLet(e, Nonrecursive, Immutable, defs),
+      ttop_desc: TTopLet(Nonrecursive, Immutable, defs),
       ttop_loc: loc,
       ttop_env: newenv,
       ttop_attributes:
@@ -562,14 +562,8 @@ let type_module = (~toplevel=false, funct_body, anchor, env, sstr /*scope*/) => 
         idents,
         [],
       );
-    let export_flag =
-      if (some_exported^) {
-        Exported;
-      } else {
-        export_flag;
-      };
     let stmt = {
-      ttop_desc: TTopLet(export_flag, rec_flag, mut_flag, defs),
+      ttop_desc: TTopLet(rec_flag, mut_flag, defs),
       ttop_loc: loc,
       ttop_env: env,
       ttop_attributes: attributes,
@@ -589,40 +583,43 @@ let type_module = (~toplevel=false, funct_body, anchor, env, sstr /*scope*/) => 
         pex_alias: Some(Location.mknoloc(name)),
         pex_loc: Location.dummy_loc,
       };
-      let (newenv, newsignatures, stmts) =
-        process_export_value(newenv, [export], [], Location.dummy_loc);
-      (newenv, signatures @ newsignatures, stmts @ [stmt]);
+      let (newsignatures, stmts) =
+        process_export_value(newenv, [export], []);
+      (newenv, signatures @ newsignatures, [stmt] @ stmts);
     | _ => (newenv, signatures, [stmt])
     };
   }
 
   and process_export_value = (env, exports, attributes) => {
-    let bindings =
+    let (sigs, values) =
+      List.split @@
       List.map(
         ({pex_name: name, pex_alias: alias, pex_loc: loc}) => {
-          let exported_name =
+          let id =
             switch (alias) {
-            | Some(alias) => alias.txt
-            | None => name.txt
+            | Some(alias) => Ident.create(alias.txt)
+            | None => Ident.create(name.txt)
             };
-          let name = {txt: Identifier.IdentName(name.txt), loc};
-          let bind_name = {txt: exported_name, loc};
-          {
-            pvb_pat: {
-              ppat_desc: PPatVar(bind_name),
-              ppat_loc: loc,
-            },
-            pvb_expr: {
-              pexp_loc: loc,
-              pexp_desc: PExpId(name),
-              pexp_attributes: [],
-            },
-            pvb_loc: loc,
-          };
+          let name = Identifier.IdentName(name);
+          let (p, {val_fullpath} as desc) = Env.lookup_value(name, env);
+          (
+            TSigValue(id, desc),
+            {tex_id: id, tex_path: val_fullpath, tex_loc: loc},
+          );
         },
         exports,
       );
-    process_let(env, Exported, Nonrecursive, Immutable, bindings, attributes);
+    (
+      sigs,
+      [
+        {
+          ttop_desc: TTopExport(values),
+          ttop_loc: Location.dummy_loc,
+          ttop_env: env,
+          ttop_attributes: Typetexp.type_attributes(attributes),
+        },
+      ],
+    );
   };
 
   let process_expr = (env, expr, attributes, loc) => {
@@ -638,7 +635,7 @@ let type_module = (~toplevel=false, funct_body, anchor, env, sstr /*scope*/) => 
   let process_exception = (env, export_flag, ext, attributes, loc) => {
     let (ext, newenv) = Typedecl.transl_exception(env, ext);
     let stmt = {
-      ttop_desc: TTopException(export_flag, ext),
+      ttop_desc: TTopException(ext),
       ttop_loc: loc,
       ttop_env: newenv,
       ttop_attributes: Typetexp.type_attributes(attributes),
@@ -661,7 +658,7 @@ let type_module = (~toplevel=false, funct_body, anchor, env, sstr /*scope*/) => 
   let type_export_aliases = ref([]);
   let process_export_data = (env, exports, loc) => {
     let process_one = (rs, {pex_name: name, pex_alias: alias, pex_loc: loc}) => {
-      let (type_id, _) = Typetexp.find_type(env, loc, IdentName(name.txt));
+      let (type_id, _) = Typetexp.find_type(env, loc, IdentName(name));
       switch (alias) {
       | Some(alias) =>
         type_export_aliases :=
@@ -701,13 +698,13 @@ let type_module = (~toplevel=false, funct_body, anchor, env, sstr /*scope*/) => 
       } else {
         [];
       };
-    let (env, sigs, stmts) =
+    let (sigs, stmts) =
       if (List.length(values) > 0) {
-        process_export_value(env, values, attributes, loc);
+        process_export_value(env, values, attributes);
       } else {
-        (env, [], []);
+        ([], []);
       };
-    (env, data_sigs @ sigs, stmts);
+    (data_sigs @ sigs, stmts);
   };
 
   let (final_env, signatures, statements) =
@@ -721,9 +718,8 @@ let type_module = (~toplevel=false, funct_body, anchor, env, sstr /*scope*/) => 
           let (new_env, stmt) = process_import(env, i, attributes, loc);
           (new_env, signatures, [stmt, ...statements]);
         | PTopExport(ex) =>
-          let (new_env, sigs, stmts) =
-            process_export(env, ex, attributes, loc);
-          (new_env, List.rev(sigs) @ signatures, stmts @ statements);
+          let (sigs, stmts) = process_export(env, ex, attributes, loc);
+          (env, List.rev(sigs) @ signatures, List.rev(stmts) @ statements);
         | PTopForeign(e, d) =>
           let (new_env, signature, statement) =
             process_foreign(env, e, d, attributes, loc);
@@ -929,7 +925,9 @@ let open_implicit_module = (m, env, in_env) => {
   let values =
     if (in_env) {
       [
-        PImportModule(Location.mknoloc(Identifier.IdentName(modname))),
+        PImportModule(
+          Location.mknoloc(Identifier.IdentName(Location.mknoloc(modname))),
+        ),
         PImportAllExcept([]),
       ];
     } else {

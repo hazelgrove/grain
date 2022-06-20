@@ -89,40 +89,21 @@ let set_global_imports = imports => {
 
 /** Global index (index of global variables) */
 
-let global_table =
-  ref(Ident.empty: Ident.tbl((bool, Types.allocation_type)));
+let global_table = ref(Ident.empty: Ident.tbl(Types.allocation_type));
 
 let get_globals = () => {
-  Ident.fold_all(
-    (id, (_, ty), acc) => [(id, ty), ...acc],
-    global_table^,
-    [],
-  );
-};
-
-let global_exports = () => {
-  let tbl = global_table^;
-  Ident.fold_all(
-    (ex_global_name, (exported, _), acc) =>
-      if (exported) {
-        [GlobalExport({ex_global_name: ex_global_name}), ...acc];
-      } else {
-        acc;
-      },
-    tbl,
-    [],
-  );
+  Ident.fold_all((id, ty, acc) => [(id, ty), ...acc], global_table^, []);
 };
 
 let reset_global = () => {
   global_table := Ident.empty;
 };
 
-let get_global = (exported, id, ty: Types.allocation_type) =>
+let get_global = (id, ty: Types.allocation_type) =>
   switch (Ident.find_same_opt(id, global_table^)) {
   | Some(_) => id
   | None =>
-    global_table := Ident.add(id, (exported, ty), global_table^);
+    global_table := Ident.add(id, ty, global_table^);
     id;
   };
 
@@ -131,7 +112,7 @@ let global_name = id => Ident.unique_name(id);
 let find_id = (id, env) =>
   try(Ident.find_same(id, env.ce_binds)) {
   | Not_found =>
-    let (_, alloc) = Ident.find_same(id, global_table^);
+    let alloc = Ident.find_same(id, global_table^);
     MGlobalBind(global_name(id), alloc);
   };
 
@@ -376,45 +357,45 @@ let run_register_allocation = (instrs: list(Mashtree.instr)) => {
     let ptr =
       snd @@
       help(
-        (Types.HeapAllocated, 0),
+        (Types.Managed, 0),
         List.map(
-          ((_, lst)) => help((Types.HeapAllocated, 0), lst),
+          ((_, lst)) => help((Types.Managed, 0), lst),
           instr_live_sets,
         ),
       );
     let i32 =
       snd @@
       help(
-        (Types.StackAllocated(WasmI32), 0),
+        (Types.Unmanaged(WasmI32), 0),
         List.map(
-          ((_, lst)) => help((Types.StackAllocated(WasmI32), 0), lst),
+          ((_, lst)) => help((Types.Unmanaged(WasmI32), 0), lst),
           instr_live_sets,
         ),
       );
     let i64 =
       snd @@
       help(
-        (Types.StackAllocated(WasmI64), 0),
+        (Types.Unmanaged(WasmI64), 0),
         List.map(
-          ((_, lst)) => help((Types.StackAllocated(WasmI64), 0), lst),
+          ((_, lst)) => help((Types.Unmanaged(WasmI64), 0), lst),
           instr_live_sets,
         ),
       );
     let f32 =
       snd @@
       help(
-        (Types.StackAllocated(WasmF32), 0),
+        (Types.Unmanaged(WasmF32), 0),
         List.map(
-          ((_, lst)) => help((Types.StackAllocated(WasmF32), 0), lst),
+          ((_, lst)) => help((Types.Unmanaged(WasmF32), 0), lst),
           instr_live_sets,
         ),
       );
     let f64 =
       snd @@
       help(
-        (Types.StackAllocated(WasmF64), 0),
+        (Types.Unmanaged(WasmF64), 0),
         List.map(
-          ((_, lst)) => help((Types.StackAllocated(WasmF64), 0), lst),
+          ((_, lst)) => help((Types.Unmanaged(WasmF64), 0), lst),
           instr_live_sets,
         ),
       );
@@ -425,11 +406,11 @@ let run_register_allocation = (instrs: list(Mashtree.instr)) => {
   let run = (ty: Types.allocation_type, instrs) => {
     let num_locals =
       switch (ty) {
-      | Types.HeapAllocated => num_locals_ptr
-      | Types.StackAllocated(WasmI32) => num_locals_i32
-      | Types.StackAllocated(WasmI64) => num_locals_i64
-      | Types.StackAllocated(WasmF32) => num_locals_f32
-      | Types.StackAllocated(WasmF64) => num_locals_f64
+      | Types.Managed => num_locals_ptr
+      | Types.Unmanaged(WasmI32) => num_locals_i32
+      | Types.Unmanaged(WasmI64) => num_locals_i64
+      | Types.Unmanaged(WasmF32) => num_locals_f32
+      | Types.Unmanaged(WasmF64) => num_locals_f64
       };
     if (num_locals < 2) {
       instrs;
@@ -525,15 +506,12 @@ let run_register_allocation = (instrs: list(Mashtree.instr)) => {
       instrs;
     };
   };
-  run(Types.HeapAllocated, instrs)
-  |> run(Types.StackAllocated(WasmI32))
-  |> run(Types.StackAllocated(WasmI64))
-  |> run(Types.StackAllocated(WasmF32))
-  |> run(Types.StackAllocated(WasmF64));
+  run(Types.Managed, instrs)
+  |> run(Types.Unmanaged(WasmI32))
+  |> run(Types.Unmanaged(WasmI64))
+  |> run(Types.Unmanaged(WasmF32))
+  |> run(Types.Unmanaged(WasmF64));
 };
-
-let grain_import_name = (mod_, name) =>
-  Printf.sprintf("gimport_%s_%s", mod_, name);
 
 let wasm_import_name = (mod_, name) =>
   Printf.sprintf("wimport_%s_%s", mod_, name);
@@ -546,6 +524,7 @@ let compile_const = (c: Asttypes.constant) =>
   | Const_bytes(_) => failwith("compile_const: Const_bytes post-ANF")
   | Const_string(_) => failwith("compile_const: Const_string post-ANF")
   | Const_char(_) => failwith("compile_const: Const_char post-ANF")
+  | Const_bigint(_) => failwith("compile_const: Const_bigint post-ANF")
   | Const_int32(i32) => MConstI32(i32)
   | Const_int64(i64) => MConstI64(i64)
   | Const_float32(f) => MConstF32(f)
@@ -621,7 +600,7 @@ let compile_lambda =
       env.ce_binds,
       free_vars,
     );
-  let closure_arg = (Ident.create("$self"), Types.HeapAllocated);
+  let closure_arg = (Ident.create("$self"), Types.Managed);
   let new_args = [closure_arg, ...args];
   let arg_binds =
     List_utils.fold_lefti(
@@ -631,7 +610,7 @@ let compile_lambda =
       free_binds,
       new_args,
     )
-    |> Ident.add(id, MArgBind(Int32.of_int(0), Types.HeapAllocated));
+    |> Ident.add(id, MArgBind(Int32.of_int(0), Types.Managed));
   let func_idx =
     if (Analyze_function_calls.has_indirect_call(id)) {
       Some(Int32.of_int(next_function_table_index(FuncId(id))));
@@ -684,7 +663,7 @@ let compile_lambda =
 };
 
 let compile_wrapper =
-    (~export_name=?, id, env, func_name, args, rets): Mashtree.closure_data => {
+    (~name=?, id, env, func_name, args, rets): Mashtree.closure_data => {
   register_function(Internal(id));
 
   let body = [
@@ -714,7 +693,7 @@ let compile_wrapper =
             },
           ],
         ),
-        [Types.StackAllocated(Types.WasmI32)],
+        [Types.Unmanaged(Types.WasmI32)],
       )
     | _ => (body, rets)
     };
@@ -738,8 +717,8 @@ let compile_wrapper =
     body: Precompiled(body),
     env: lam_env,
     id,
-    name: export_name,
-    args: [Types.HeapAllocated, ...args],
+    name,
+    args: [Types.Managed, ...args],
     return_type,
     stack_size: {
       stack_size_ptr: 0,
@@ -755,8 +734,8 @@ let compile_wrapper =
   {func_idx, arity: Int32.of_int(arity + 1), variables: []};
 };
 
-let get_global = (~exported=false, id, ty) => {
-  let ret = get_global(exported, id, ty);
+let get_global = (id, ty) => {
+  let ret = get_global(id, ty);
   global_name(ret);
 };
 
@@ -767,7 +746,7 @@ let rec compile_comp = (~id=?, env, c) => {
       let compiled_arg = compile_imm(env, arg);
       let switch_type =
         Option.fold(
-          ~none=Types.StackAllocated(WasmI32),
+          ~none=Types.Unmanaged(WasmI32),
           ~some=((_, exp)) => exp.anf_allocation_type,
           List.nth_opt(branches, 0),
         );
@@ -868,7 +847,39 @@ let rec compile_comp = (~id=?, env, c) => {
       MAllocate(MInt32(Int64.to_int32(n)))
     | CNumber(Const_number_int(n)) => MAllocate(MInt64(n))
     | CNumber(Const_number_float(f)) => MAllocate(MFloat64(f))
-    | CNumber(Const_number_rational(n, d)) => MAllocate(MRational(n, d))
+    | CNumber(
+        Const_number_rational({
+          rational_negative,
+          rational_num_limbs,
+          rational_den_limbs,
+          _,
+        }),
+      ) =>
+      MAllocate(
+        MRational({
+          numerator_flags:
+            if (rational_negative) {
+              [Bigint_flags.BigIntNegative];
+            } else {
+              [];
+            },
+          numerator_limbs: rational_num_limbs,
+          denominator_flags: [],
+          denominator_limbs: rational_den_limbs,
+        }),
+      )
+    | CNumber(Const_number_bigint({bigint_negative, bigint_limbs, _})) =>
+      MAllocate(
+        MBigInt({
+          flags:
+            if (bigint_negative) {
+              [Bigint_flags.BigIntNegative];
+            } else {
+              [];
+            },
+          limbs: bigint_limbs,
+        }),
+      )
     | CInt32(i) => MAllocate(MInt32(i))
     | CInt64(i) => MAllocate(MInt64(i))
     | CFloat32(f) => MAllocate(MFloat32(f))
@@ -934,8 +945,8 @@ let rec compile_comp = (~id=?, env, c) => {
       MCallRaw({
         func: "builtin",
         func_type: (
-          List.map(i => Types.StackAllocated(WasmI32), args),
-          [Types.StackAllocated(WasmI32)],
+          List.map(i => Types.Unmanaged(WasmI32), args),
+          [Types.Unmanaged(WasmI32)],
         ),
         args: List.map(compile_imm(env), args),
       })
@@ -958,38 +969,35 @@ and compile_anf_expr = (env, a) =>
       | [(id, {comp_allocation_type}), ...rest] =>
         let (alloc, stack_idx, next_env) =
           switch (comp_allocation_type) {
-          | HeapAllocated => (
-              Types.HeapAllocated,
+          | Managed => (
+              Types.Managed,
               env.ce_stack_idx_ptr,
               {...env, ce_stack_idx_ptr: env.ce_stack_idx_ptr + 1},
             )
-          | StackAllocated(WasmI32) => (
-              Types.StackAllocated(WasmI32),
+          | Unmanaged(WasmI32) => (
+              Types.Unmanaged(WasmI32),
               env.ce_stack_idx_i32,
               {...env, ce_stack_idx_i32: env.ce_stack_idx_i32 + 1},
             )
-          | StackAllocated(WasmI64) => (
-              Types.StackAllocated(WasmI64),
+          | Unmanaged(WasmI64) => (
+              Types.Unmanaged(WasmI64),
               env.ce_stack_idx_i64,
               {...env, ce_stack_idx_i64: env.ce_stack_idx_i64 + 1},
             )
-          | StackAllocated(WasmF32) => (
-              Types.StackAllocated(WasmF32),
+          | Unmanaged(WasmF32) => (
+              Types.Unmanaged(WasmF32),
               env.ce_stack_idx_f32,
               {...env, ce_stack_idx_f32: env.ce_stack_idx_f32 + 1},
             )
-          | StackAllocated(WasmF64) => (
-              Types.StackAllocated(WasmF64),
+          | Unmanaged(WasmF64) => (
+              Types.Unmanaged(WasmF64),
               env.ce_stack_idx_f64,
               {...env, ce_stack_idx_f64: env.ce_stack_idx_f64 + 1},
             )
           };
         let (env, loc) =
           switch (global) {
-          | Global({exported}) => (
-              env,
-              MGlobalBind(get_global(~exported, id, alloc), alloc),
-            )
+          | Global => (env, MGlobalBind(get_global(id, alloc), alloc))
           | Nonglobal => (
               next_env,
               MLocalBind(Int32.of_int(stack_idx), alloc),
@@ -1087,16 +1095,14 @@ let lift_imports = (env, imports) => {
         {imp_use_id, imp_desc, imp_shape, imp_exported},
       ) => {
     switch (imp_desc) {
-    | GrainValue(mod_, name) =>
-      let mimp_mod = Ident.create_persistent(mod_);
-      let mimp_name = Ident.create_persistent(name);
-      let import_name = grain_import_name(mod_, name);
+    | GrainValue(mimp_mod, mimp_name) =>
       let (alloc, mods, closure_setups) =
         switch (imp_shape) {
         | GlobalShape(alloc) => (
             alloc,
             [
               {
+                mimp_id: imp_use_id,
                 mimp_mod,
                 mimp_name,
                 mimp_type: process_shape(true, imp_shape),
@@ -1108,16 +1114,23 @@ let lift_imports = (env, imports) => {
             [],
           )
         | FunctionShape(_) =>
-          register_function(Imported(imp_use_id, import_name));
+          register_function(
+            Imported(imp_use_id, Ident.unique_name(imp_use_id)),
+          );
           let closure_setups =
             if (Analyze_function_calls.has_indirect_call(imp_use_id)) {
-              let idx = next_function_table_index(FuncName(import_name));
+              let idx =
+                next_function_table_index(
+                  FuncName(Ident.unique_name(imp_use_id)),
+                );
               [
                 {
                   instr_desc:
                     MClosureOp(
                       MClosureSetPtr(Int32.of_int(idx)),
-                      MImmBinding(MGlobalBind(import_name, HeapAllocated)),
+                      MImmBinding(
+                        MGlobalBind(Ident.unique_name(imp_use_id), Managed),
+                      ),
                     ),
                   instr_loc: Location.dummy_loc,
                 },
@@ -1126,17 +1139,19 @@ let lift_imports = (env, imports) => {
               [];
             };
           (
-            HeapAllocated,
+            Managed,
             [
               {
+                mimp_id: imp_use_id,
                 mimp_mod,
                 mimp_name,
-                mimp_type: process_shape(true, GlobalShape(HeapAllocated)),
+                mimp_type: process_shape(true, GlobalShape(Managed)),
                 mimp_kind: MImportGrain,
                 mimp_setup: MCallGetter,
                 mimp_used: true,
               },
               {
+                mimp_id: imp_use_id,
                 mimp_mod,
                 mimp_name,
                 mimp_type: process_shape(true, imp_shape),
@@ -1156,14 +1171,12 @@ let lift_imports = (env, imports) => {
           ce_binds:
             Ident.add(
               imp_use_id,
-              MGlobalBind(import_name, alloc),
+              MGlobalBind(Ident.unique_name(imp_use_id), alloc),
               env.ce_binds,
             ),
         },
       );
-    | WasmValue(mod_, name) =>
-      let mimp_mod = Ident.create_persistent(mod_);
-      let mimp_name = Ident.create_persistent(name);
+    | WasmValue(mimp_mod, mimp_name) =>
       let alloc =
         switch (imp_shape) {
         | GlobalShape(alloc) => alloc
@@ -1171,6 +1184,7 @@ let lift_imports = (env, imports) => {
           failwith("internal: WasmValue had FunctionShape")
         };
       let new_mod = {
+        mimp_id: imp_use_id,
         mimp_mod,
         mimp_name,
         mimp_type: process_shape(false, imp_shape),
@@ -1186,36 +1200,23 @@ let lift_imports = (env, imports) => {
           ce_binds:
             Ident.add(
               imp_use_id,
-              MGlobalBind(
-                wasm_import_name(
-                  Ident.name(mimp_mod),
-                  Ident.name(mimp_name),
-                ),
-                alloc,
-              ),
+              MGlobalBind(Ident.unique_name(imp_use_id), alloc),
               env.ce_binds,
             ),
         },
       );
     | WasmFunction(mod_, name) =>
-      let exported = imp_exported == Global({exported: true});
-      let glob =
-        get_global(~exported, imp_use_id, Types.StackAllocated(WasmI32));
+      let glob = get_global(imp_use_id, Types.Unmanaged(WasmI32));
+      let mimp_id = Ident.create(wasm_import_name(mod_, name));
       let new_mod = {
-        mimp_mod: Ident.create_persistent(mod_),
-        mimp_name: Ident.create_persistent(name),
+        mimp_id,
+        mimp_mod: mod_,
+        mimp_name: name,
         mimp_type: process_shape(false, imp_shape),
         mimp_kind: MImportWasm,
         mimp_setup: MWrap(Int32.zero),
         mimp_used: true,
       };
-      let func_name = wasm_import_name(mod_, name);
-      let export_name =
-        if (exported) {
-          Some(name);
-        } else {
-          None;
-        };
       (
         [new_mod, ...imports],
         [
@@ -1230,16 +1231,16 @@ let lift_imports = (env, imports) => {
                   instr_desc:
                     MStore([
                       (
-                        MGlobalBind(glob, Types.HeapAllocated),
+                        MGlobalBind(glob, Types.Managed),
                         {
                           instr_desc:
                             MAllocate(
                               MClosure(
                                 compile_wrapper(
-                                  ~export_name?,
+                                  ~name,
                                   imp_use_id,
                                   env,
-                                  func_name,
+                                  Ident.unique_name(mimp_id),
                                   inputs,
                                   outputs,
                                 ),
@@ -1259,11 +1260,7 @@ let lift_imports = (env, imports) => {
         {
           ...env,
           ce_binds:
-            Ident.add(
-              imp_use_id,
-              MGlobalBind(glob, HeapAllocated),
-              env.ce_binds,
-            ),
+            Ident.add(imp_use_id, MGlobalBind(glob, Managed), env.ce_binds),
         },
       );
     | JSFunction(_) => failwith("NYI: lift_imports JSFunction")
@@ -1280,7 +1277,7 @@ let lift_imports = (env, imports) => {
 let transl_signature = (~functions, ~imports, signature) => {
   open Types;
 
-  let function_exports = ref([]);
+  let exports = ref([]);
 
   // At this point in compilation, we know which functions can be called
   // directly/indirectly at the wasm level. We add this information to the
@@ -1299,92 +1296,122 @@ let transl_signature = (~functions, ~imports, signature) => {
     imp =>
       switch (imp.imp_shape) {
       | FunctionShape(_) =>
-        let internal_name =
-          switch (imp.imp_desc) {
-          | GrainValue(mod_, name) => grain_import_name(mod_, name)
-          | WasmFunction(mod_, name) => Ident.unique_name(imp.imp_use_id)
-          | _ => failwith("Impossible: Wasm or js value had FunctionShape")
-          };
+        let internal_name = Ident.unique_name(imp.imp_use_id);
         Ident_tbl.add(func_map, imp.imp_use_id, internal_name);
       | _ => ()
       },
-    imports,
+    imports.specs,
   );
   let sign =
     List.map(
       fun
-      | TSigValue(
-          vid,
-          {
-            val_repr: ReprFunction(args, rets, _),
-            val_fullpath: Path.PIdent(id),
-          } as vd,
-        ) => {
-          switch (Ident_tbl.find_opt(func_map, id)) {
-          | Some(internal_name) =>
-            let external_name = Ident.name(vid);
-            function_exports :=
-              [
-                FunctionExport({
-                  ex_function_name: external_name,
-                  ex_function_internal_name: internal_name,
-                }),
-                ...function_exports^,
-              ];
-            TSigValue(
-              vid,
-              {
-                ...vd,
-                val_repr: ReprFunction(args, rets, Direct(external_name)),
-              },
-            );
-          | _ =>
-            TSigValue(
-              vid,
-              {...vd, val_repr: ReprFunction(args, rets, Indirect)},
-            )
+      | TSigValue(vid, {val_repr, val_internalpath} as vd) => {
+          let id =
+            switch (val_internalpath) {
+            | PIdent(id) => id
+            | PExternal(_) =>
+              switch (Path_tbl.find_opt(imports.path_map, val_internalpath)) {
+              | Some(id) => id
+              | None =>
+                failwith(
+                  "Impossible: path to import not found "
+                  ++ Path.name(val_internalpath),
+                )
+              }
+            };
+          exports :=
+            [
+              GlobalExport({
+                ex_global_name: Ident.name(vid),
+                ex_global_internal_name: Ident.unique_name(id),
+              }),
+              ...exports^,
+            ];
+          switch (val_repr) {
+          | ReprFunction(args, rets, _) =>
+            switch (Ident_tbl.find_opt(func_map, id)) {
+            | Some(internal_name) =>
+              let external_name = Ident.name(vid);
+              exports :=
+                [
+                  FunctionExport({
+                    ex_function_name: external_name,
+                    ex_function_internal_name: internal_name,
+                  }),
+                  ...exports^,
+                ];
+              TSigValue(
+                vid,
+                {
+                  ...vd,
+                  val_repr: ReprFunction(args, rets, Direct(external_name)),
+                },
+              );
+            | _ =>
+              TSigValue(
+                vid,
+                {...vd, val_repr: ReprFunction(args, rets, Indirect)},
+              )
+            }
+          | ReprValue(_) => TSigValue(vid, vd)
           };
         }
       | TSigType(tid, {type_kind: TDataVariant(cds)} as td, rs) => {
           let cds =
             List.map(
               ({cd_id, cd_repr} as cd) => {
+                exports :=
+                  [
+                    GlobalExport({
+                      ex_global_name: Ident.name(cd_id),
+                      ex_global_internal_name: Ident.unique_name(cd_id),
+                    }),
+                    ...exports^,
+                  ];
                 switch (cd_repr) {
                 | ReprFunction(args, res, _) =>
                   let external_name = Ident.name(cd_id);
                   let internal_name = Ident.unique_name(cd_id);
-                  function_exports :=
+                  exports :=
                     [
                       FunctionExport({
                         ex_function_name: external_name,
                         ex_function_internal_name: internal_name,
                       }),
-                      ...function_exports^,
+                      ...exports^,
                     ];
                   {
                     ...cd,
                     cd_repr: ReprFunction(args, res, Direct(internal_name)),
                   };
                 | ReprValue(_) => cd
-                }
+                };
               },
               cds,
             );
           TSigType(tid, {...td, type_kind: TDataVariant(cds)}, rs);
         }
       | TSigTypeExt(tid, {ext_name, ext_args, ext_repr} as cstr, rs) => {
+          exports :=
+            [
+              GlobalExport({
+                ex_global_name: Ident.name(ext_name),
+                ex_global_internal_name: Ident.unique_name(ext_name),
+              }),
+              ...exports^,
+            ];
           let cstr =
             switch (ext_repr) {
             | ReprFunction(args, res, _) =>
               let external_name = Ident.name(ext_name);
               let internal_name = Ident.unique_name(ext_name);
-              function_exports :=
+              exports :=
                 [
                   FunctionExport({
                     ex_function_name: external_name,
                     ex_function_internal_name: internal_name,
                   }),
-                  ...function_exports^,
+                  ...exports^,
                 ];
               {
                 ...cstr,
@@ -1397,7 +1424,7 @@ let transl_signature = (~functions, ~imports, signature) => {
       | _ as item => item,
       signature.Cmi_format.cmi_sign,
     );
-  ({...signature, cmi_sign: sign}, function_exports^);
+  ({...signature, cmi_sign: sign}, exports^);
 };
 
 let transl_anf_program =
@@ -1410,7 +1437,7 @@ let transl_anf_program =
   Analyze_function_calls.analyze(anf_prog);
 
   let (imports, setups, env) =
-    lift_imports(initial_compilation_env, anf_prog.imports);
+    lift_imports(initial_compilation_env, anf_prog.imports.specs);
 
   set_global_imports(env.ce_binds);
 
@@ -1437,13 +1464,12 @@ let transl_anf_program =
         {...f, body: run_register_allocation(body)},
       compile_remaining_worklist(),
     );
-  let (signature, function_exports) =
+  let (signature, exports) =
     transl_signature(
       ~functions,
       ~imports=anf_prog.imports,
       anf_prog.signature,
     );
-  let exports = function_exports @ global_exports();
   let globals = get_globals();
   let function_table_elements = get_function_table_idents();
 

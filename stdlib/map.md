@@ -13,15 +13,44 @@ No other changes yet.
 import Map from "map"
 ```
 
+## Types
+
+Type declarations included in the Map module.
+
+### Map.**Map**
+
+```grain
+type Map<k, v>
+```
+
 ## Values
 
 Functions for working with Maps.
 
 ### Map.**makeSized**
 
+<details disabled>
+<summary tabindex="-1">Added in <code>0.2.0</code></summary>
+No other changes yet.
+</details>
+
 ```grain
 makeSized : Number -> Map<a, b>
 ```
+
+Creates a new empty map with an initial storage of the given size. As values are added or removed, the internal storage may grow or shrink. Generally, you won't need to care about the storage size of your map and can use `Map.make()` instead.
+
+Parameters:
+
+|param|type|description|
+|-----|----|-----------|
+|`size`|`Number`|The initial storage size of the map|
+
+Returns:
+
+|type|description|
+|----|-----------|
+|`Map<a, b>`|An empty map with the given initial storage size|
 
 ### Map.**make**
 
@@ -234,7 +263,7 @@ Parameters:
 <tr><th>version</th><th>changes</th></tr>
 </thead>
 <tbody>
-<tr><td><code>next</code></td><td>Ensured the iterator function return type is always `Void`</td></tr>
+<tr><td><code>0.5.0</code></td><td>Ensured the iterator function return type is always `Void`</td></tr>
 </tbody>
 </table>
 </details>

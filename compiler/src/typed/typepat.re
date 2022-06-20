@@ -525,7 +525,7 @@ and type_pat_aux =
         Typetexp.find_all_constructors(
           env^,
           name.loc,
-          Identifier.IdentName(name.txt),
+          Identifier.IdentName(name),
         )
       };
 
@@ -549,7 +549,7 @@ and type_pat_aux =
           ...sp,
           ppat_desc:
             PPatConstruct(
-              Location.mkloc(Identifier.IdentName(name.txt), name.loc),
+              Location.mkloc(Identifier.IdentName(name), name.loc),
               [],
             ),
         },
@@ -754,7 +754,7 @@ and type_pat_aux =
 
     let candidates =
       switch (lid.txt, constrs) {
-      | (Identifier.IdentName(s), Some(constrs))
+      | (Identifier.IdentName({txt: s}), Some(constrs))
           when Hashtbl.mem(constrs, s) => [
           (Hashtbl.find(constrs, s), (() => ())),
         ]
@@ -1069,6 +1069,7 @@ let add_pattern_variables =
             val_repr: Type_utils.repr_of_type(env, ty),
             val_kind: TValReg,
             Types.val_loc: loc,
+            val_internalpath: Path.PIdent(id),
             val_fullpath: Path.PIdent(id),
             val_mutable: mut,
             val_global: global,

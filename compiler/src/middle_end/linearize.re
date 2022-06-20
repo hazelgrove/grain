@@ -23,34 +23,32 @@ let gensym = Ident.create;
 let value_imports = ref([]);
 /* At the linearization phase, we lift all imports */
 let symbol_table = ref(Ident.empty: Ident.tbl(Ident.tbl(Ident.t)));
-module PathMap =
-  Hashtbl.Make({
-    type t = Path.t;
-    let hash = x => Hashtbl.hash(Path.name(x));
-    let equal = (a, b) => Path.compare(a, b) === 0;
-  });
-let type_map = PathMap.create(10);
+let type_map = Path_tbl.create(10);
+let import_map = Path_tbl.create(10);
 
 let get_type_id = typath =>
-  switch (PathMap.find_opt(type_map, typath)) {
+  switch (Path_tbl.find_opt(type_map, typath)) {
   | Some(id) => id
   | None =>
     let id = Path.stamp(typath);
-    PathMap.add(type_map, typath, id);
+    Path_tbl.add(type_map, typath, id);
     id;
   };
 
 let lookup_symbol =
-    (~allocation_type, ~repr, mod_, mod_decl, name, original_name) => {
+    (~allocation_type, ~repr, ~path, mod_, mod_decl, name, original_name) => {
   switch (Ident.find_same_opt(mod_, symbol_table^)) {
   | Some(_) => ()
   | None => symbol_table := Ident.add(mod_, Ident.empty, symbol_table^)
   };
   let modtbl = Ident.find_same(mod_, symbol_table^);
   switch (Ident.find_name_opt(name, modtbl)) {
-  | Some((_, ident)) => ident
+  | Some((_, ident)) =>
+    Path_tbl.add(import_map, path, ident);
+    ident;
   | None =>
     let fresh = gensym(name);
+    Path_tbl.add(import_map, path, fresh);
     switch (mod_decl.md_filepath) {
     | Some(filepath) =>
       let shape =
@@ -58,13 +56,13 @@ let lookup_symbol =
         | ReprFunction(args, rets, Direct(_)) =>
           // Add closure argument
           let args = [
-            HeapAllocated,
+            Managed,
             ...List.map(allocation_type_of_wasm_repr, args),
           ];
           // Add return type for functions that return void
           let rets =
             switch (rets) {
-            | [] => [StackAllocated(WasmI32)]
+            | [] => [Unmanaged(WasmI32)]
             | _ => List.map(allocation_type_of_wasm_repr, rets)
             };
           FunctionShape(args, rets);
@@ -98,10 +96,7 @@ let convert_bind = (body, bind) =>
 
 let convert_binds = anf_binds => {
   let void_comp =
-    Comp.imm(
-      ~allocation_type=StackAllocated(WasmI32),
-      Imm.const(Const_void),
-    );
+    Comp.imm(~allocation_type=Unmanaged(WasmI32), Imm.const(Const_void));
   let void = AExp.comp(void_comp);
   let (last_bind, top_binds) =
     switch (anf_binds) {
@@ -129,16 +124,41 @@ let convert_binds = anf_binds => {
 };
 
 let transl_const =
-    (c: Types.constant): Either.t(imm_expression, (string, comp_expression)) => {
+    (~loc=Location.dummy_loc, ~env=Env.empty, c: Types.constant)
+    : Either.t(imm_expression, (ident, list(anf_bind))) => {
+  let with_bind = (name, f) => {
+    let tmp = gensym(name);
+    (tmp, f(tmp));
+  };
   switch (c) {
-  | Const_number(n) => Right(("number", Comp.number(n)))
-  | Const_int32(i) => Right(("int32", Comp.int32(i)))
-  | Const_int64(i) => Right(("int64", Comp.int64(i)))
-  | Const_float64(i) => Right(("float64", Comp.float64(i)))
-  | Const_float32(i) => Right(("float32", Comp.float32(i)))
-  | Const_bytes(b) => Right(("bytes", Comp.bytes(b)))
-  | Const_string(s) => Right(("str", Comp.string(s)))
-  | Const_char(c) => Right(("char", Comp.char(c)))
+  | Const_number(n) =>
+    Right(
+      with_bind("number", tmp => [BLet(tmp, Comp.number(n), Nonglobal)]),
+    )
+  | Const_bigint(data) =>
+    Right(
+      with_bind("number", tmp =>
+        [BLet(tmp, Comp.number(Const_number_bigint(data)), Nonglobal)]
+      ),
+    )
+  | Const_int32(i) =>
+    Right(with_bind("int32", tmp => [BLet(tmp, Comp.int32(i), Nonglobal)]))
+  | Const_int64(i) =>
+    Right(with_bind("int64", tmp => [BLet(tmp, Comp.int64(i), Nonglobal)]))
+  | Const_float64(i) =>
+    Right(
+      with_bind("float64", tmp => [BLet(tmp, Comp.float64(i), Nonglobal)]),
+    )
+  | Const_float32(i) =>
+    Right(
+      with_bind("float32", tmp => [BLet(tmp, Comp.float32(i), Nonglobal)]),
+    )
+  | Const_bytes(b) =>
+    Right(with_bind("bytes", tmp => [BLet(tmp, Comp.bytes(b), Nonglobal)]))
+  | Const_string(s) =>
+    Right(with_bind("str", tmp => [BLet(tmp, Comp.string(s), Nonglobal)]))
+  | Const_char(c) =>
+    Right(with_bind("char", tmp => [BLet(tmp, Comp.char(c), Nonglobal)]))
   | _ => Left(Imm.const(c))
   };
 };
@@ -183,6 +203,7 @@ let rec transl_imm =
         lookup_symbol(
           ~allocation_type,
           ~repr=val_repr,
+          ~path=p,
           mod_,
           mod_decl,
           ident,
@@ -215,6 +236,7 @@ let rec transl_imm =
         lookup_symbol(
           ~allocation_type,
           ~repr=val_repr,
+          ~path=p,
           mod_,
           mod_decl,
           ident,
@@ -267,6 +289,7 @@ let rec transl_imm =
           lookup_symbol(
             ~allocation_type,
             ~repr=val_repr,
+            ~path=p,
             mod_,
             mod_decl,
             ident,
@@ -290,11 +313,9 @@ let rec transl_imm =
       failwith("NYI: transl_imm: TExpIdent with multiple PExternal")
     }
   | TExpConstant(c) =>
-    switch (transl_const(c)) {
+    switch (transl_const(~loc, ~env, c)) {
     | Left(imm) => (imm, [])
-    | Right((name, cexpr)) =>
-      let tmp = gensym(name);
-      (Imm.id(~loc, ~env, tmp), [BLet(tmp, cexpr, Nonglobal)]);
+    | Right((name, cexprs)) => (Imm.id(~loc, ~env, name), cexprs)
     }
   | TExpNull => (Imm.const(~loc, ~env, Const_bool(false)), [])
   | TExpPrim0(op) =>
@@ -1047,7 +1068,7 @@ and transl_comp_expression =
       ],
       _,
     )
-      when Identifier.equal(ident, Identifier.IdentName("()")) =>
+      when Identifier.equal(ident, Identifier.IdentName(mknoloc("()"))) =>
     let anf_body = transl_anf_expression(body);
     (
       Comp.lambda(
@@ -1129,7 +1150,7 @@ and transl_comp_expression =
         ~attributes,
         ~allocation_type,
         ~env,
-        (new_func, ([HeapAllocated], StackAllocated(WasmI32))),
+        (new_func, ([Managed], Unmanaged(WasmI32))),
         new_args,
       ),
       func_setup @ List.concat(new_setup),
@@ -1197,9 +1218,9 @@ and transl_anf_expression =
   List.fold_right(
     (bind, body) =>
       switch (bind) {
-      | BLet(_, _, Global(_))
-      | BLetMut(_, _, Global(_))
-      | BLetRec(_, Global(_)) => failwith("Global bind at non-toplevel")
+      | BLet(_, _, Global)
+      | BLetMut(_, _, Global)
+      | BLetRec(_, Global) => failwith("Global bind at non-toplevel")
       | BSeq(exp) => AExp.seq(~loc, ~env, exp, body)
       | BLet(name, exp, global) =>
         AExp.let_(~loc, ~env, ~global, Nonrecursive, [(name, exp)], body)
@@ -1288,12 +1309,12 @@ let bind_constructor =
             ~env,
             Comp.adt(~loc, ~env, imm_tytag, imm_tag, arg_ids),
           ),
-          HeapAllocated,
+          Managed,
         ),
       );
     | CstrUnboxed => failwith("NYI: ANF CstrUnboxed")
     };
-  BLet(cd_id, rhs, Global({exported: true}));
+  BLet(cd_id, rhs, Global);
 };
 
 let linearize_decl = (env, loc, typath, decl) => {
@@ -1323,9 +1344,8 @@ let rec transl_anf_statement =
         )
         : (option(list(anf_bind)), list(import_spec)) =>
   switch (ttop_desc) {
-  | TTopLet(_, _, _, []) => (None, [])
+  | TTopLet(_, _, []) => (None, [])
   | TTopLet(
-      export_flag,
       Nonrecursive,
       mut_flag,
       [
@@ -1344,46 +1364,30 @@ let rec transl_anf_statement =
       ...vb_expr,
       exp_attributes: attributes @ vb_expr.exp_attributes,
     };
-    let exported = export_flag == Exported;
-    let name =
-      if (exported) {
-        Some(Ident.name(bind));
-      } else {
-        None;
-      };
+    let name = Some(Ident.name(bind));
     let (exp_ans, exp_setup) = transl_comp_expression(~name?, vb_expr);
     let binds =
       switch (mut_flag) {
-      | Mutable => [BLetMut(bind, exp_ans, Global({exported: exported}))]
-      | Immutable => [BLet(bind, exp_ans, Global({exported: exported}))]
+      | Mutable => [BLetMut(bind, exp_ans, Global)]
+      | Immutable => [BLet(bind, exp_ans, Global)]
       };
     let (rest_setup, rest_imp) =
       transl_anf_statement({
         ...s,
-        ttop_desc: TTopLet(export_flag, Nonrecursive, mut_flag, rest),
+        ttop_desc: TTopLet(Nonrecursive, mut_flag, rest),
       });
     let rest_setup = Option.value(~default=[], rest_setup);
     (Some(exp_setup @ binds @ rest_setup), rest_imp);
-  | TTopLet(
-      export_flag,
-      Nonrecursive,
-      mut_flag,
-      [{vb_expr, vb_pat}, ...rest],
-    ) =>
+  | TTopLet(Nonrecursive, mut_flag, [{vb_expr, vb_pat}, ...rest]) =>
     let vb_expr = {
       ...vb_expr,
       exp_attributes: attributes @ vb_expr.exp_attributes,
     };
-    let exported = export_flag == Exported;
     let name =
-      if (exported) {
-        switch (vb_pat.pat_desc) {
-        | TPatVar(bind, _)
-        | TPatAlias(_, bind, _) => Some(Ident.name(bind))
-        | _ => None
-        };
-      } else {
-        None;
+      switch (vb_pat.pat_desc) {
+      | TPatVar(bind, _)
+      | TPatAlias(_, bind, _) => Some(Ident.name(bind))
+      | _ => None
       };
     let (exp_ans, exp_setup) = transl_comp_expression(~name?, vb_expr);
     let tmp = gensym("destructure_target");
@@ -1391,33 +1395,28 @@ let rec transl_anf_statement =
     let (rest_setup, rest_imp) =
       transl_anf_statement({
         ...s,
-        ttop_desc: TTopLet(export_flag, Nonrecursive, mut_flag, rest),
+        ttop_desc: TTopLet(Nonrecursive, mut_flag, rest),
       });
     let rest_setup = Option.value(~default=[], rest_setup);
     let setup =
       destructure_setup
       @ MatchCompiler.destructure(
           ~mut_flag,
-          ~global=Global({exported: exported}),
+          ~global=Global,
           vb_pat,
           Imm.id(tmp),
         );
     (Some(exp_setup @ setup @ rest_setup), rest_imp);
-  | TTopLet(export_flag, Recursive, mut_flag, binds) =>
-    let exported = export_flag == Exported;
+  | TTopLet(Recursive, mut_flag, binds) =>
     let (binds, new_binds_setup) =
       List.split(
         List.map(
           ({vb_pat, vb_expr}) => {
             let name =
-              if (exported) {
-                switch (vb_pat.pat_desc) {
-                | TPatVar(bind, _)
-                | TPatAlias(_, bind, _) => Some(Ident.name(bind))
-                | _ => None
-                };
-              } else {
-                None;
+              switch (vb_pat.pat_desc) {
+              | TPatVar(bind, _)
+              | TPatAlias(_, bind, _) => Some(Ident.name(bind))
+              | _ => None
               };
             let vb_expr = {
               ...vb_expr,
@@ -1440,21 +1439,10 @@ let rec transl_anf_statement =
         binds,
       );
 
-    let exported = export_flag == Exported;
     let bind =
       switch (mut_flag) {
-      | Mutable => [
-          BLetRecMut(
-            List.combine(names, new_binds),
-            Global({exported: exported}),
-          ),
-        ]
-      | Immutable => [
-          BLetRec(
-            List.combine(names, new_binds),
-            Global({exported: exported}),
-          ),
-        ]
+      | Mutable => [BLetRecMut(List.combine(names, new_binds), Global)]
+      | Immutable => [BLetRec(List.combine(names, new_binds), Global)]
       };
     (Some(List.concat(new_setup) @ bind), []);
   | TTopExpr(expr) =>
@@ -1481,13 +1469,8 @@ let rec transl_anf_statement =
     } else {
       (None, []);
     };
-  | TTopException(_, ext) => (Some(linearize_exception(env, ext)), [])
-  | TTopForeign(exported, desc) =>
-    let global =
-      switch (exported) {
-      | Exported => Global({exported: true})
-      | Nonexported => Nonglobal
-      };
+  | TTopException(ext) => (Some(linearize_exception(env, ext)), [])
+  | TTopForeign(desc) =>
     let external_name =
       List.fold_left(
         name =>
@@ -1497,12 +1480,13 @@ let rec transl_anf_statement =
         desc.tvd_name.txt,
         attributes,
       );
+    Path_tbl.add(import_map, desc.tvd_val.val_fullpath, desc.tvd_id);
     switch (desc.tvd_desc.ctyp_type.desc) {
     | TTyArrow(_) =>
       let (argsty, retty) =
         get_fn_allocation_type(env, desc.tvd_desc.ctyp_type);
       let retty =
-        if (returns_void(desc.tvd_desc.ctyp_type)) {
+        if (returns_void(env, desc.tvd_desc.ctyp_type)) {
           [];
         } else {
           [retty];
@@ -1511,7 +1495,7 @@ let rec transl_anf_statement =
         None,
         [
           Imp.wasm_func(
-            ~global,
+            ~global=Global,
             desc.tvd_id,
             desc.tvd_mod.txt,
             external_name,
@@ -1525,7 +1509,7 @@ let rec transl_anf_statement =
         None,
         [
           Imp.wasm_value(
-            ~global,
+            ~global=Global,
             desc.tvd_id,
             desc.tvd_mod.txt,
             external_name,
@@ -1534,6 +1518,33 @@ let rec transl_anf_statement =
         ],
       );
     };
+  | TTopExport(exports) =>
+    List.iter(
+      ({tex_path}) => {
+        let {val_fullpath, val_type, val_repr} =
+          Env.find_value(tex_path, env);
+        switch (val_fullpath) {
+        | Path.PExternal(Path.PIdent(mod_) as p, ident, _) =>
+          let allocation_type = get_allocation_type(env, val_type);
+          let mod_decl = Env.find_module(p, None, env);
+          // Lookup external exports to import them into the module
+          ignore @@
+          lookup_symbol(
+            ~allocation_type,
+            ~repr=val_repr,
+            ~path=val_fullpath,
+            mod_,
+            mod_decl,
+            ident,
+            ident,
+          );
+        | Path.PIdent(_) => ()
+        | _ => failwith("NYI: Path with multiple PExternal")
+        };
+      },
+      exports,
+    );
+    (None, []);
   | _ => (None, [])
   };
 
@@ -1543,7 +1554,7 @@ let linearize_builtins = (env, builtins) => {
     List.map(
       decl =>
         switch (decl.type_kind) {
-        | TDataVariant(_) when decl.type_allocation == HeapAllocated =>
+        | TDataVariant(_) when decl.type_allocation == Managed =>
           linearize_decl(env, Location.dummy_loc, decl.type_path, decl)
         | _ => []
         },
@@ -1589,7 +1600,7 @@ let gather_type_metadata = statements => {
             decls,
           );
         List.append(info, metadata);
-      | TTopException(_, ext) =>
+      | TTopException(ext) =>
         let ty_id = get_type_id(ext.ext_type.ext_type_path);
         let id = ext.ext_id;
         let cstr = Datarepr.extension_descr(Path.PIdent(id), ext.ext_type);
@@ -1615,7 +1626,8 @@ let gather_type_metadata = statements => {
 
 let transl_anf_module =
     ({statements, env, signature}: typed_program): anf_program => {
-  PathMap.clear(type_map);
+  Path_tbl.clear(type_map);
+  Path_tbl.clear(import_map);
   value_imports := [];
   symbol_table := Ident.empty;
   let prog_setup = linearize_builtins(env, Builtin_types.builtin_decls);
@@ -1634,7 +1646,10 @@ let transl_anf_module =
     );
   let imports = List.rev(imports);
   let body = convert_binds(top_binds);
-  let imports = imports @ value_imports^;
+  let imports = {
+    specs: imports @ value_imports^,
+    path_map: Path_tbl.copy(import_map),
+  };
   let type_metadata = gather_type_metadata(statements);
   {body, env, imports, signature, type_metadata, analyses: ref([])};
 };

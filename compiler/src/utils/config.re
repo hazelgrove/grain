@@ -384,24 +384,15 @@ let option_conv = ((prsr, prntr)) => (
     | Some(x) => prntr(ppf, x),
 );
 
-type optimization_level =
-  | Level_zero
-  | Level_one
-  | Level_two
-  | Level_three;
+type profile =
+  | Release;
 
-let optimization_level =
+let profile =
   opt(
-    ~doc="Set the optimization level.",
-    ~names=["O"],
-    ~conv=
-      Cmdliner.Arg.enum([
-        ("0", Level_zero),
-        ("1", Level_one),
-        ("2", Level_two),
-        ("3", Level_three),
-      ]),
-    Level_three,
+    ~doc="Set a compilation profile.",
+    ~names=["profile"],
+    ~conv=Cmdliner.Arg.enum([("release", Some(Release))]),
+    None,
   );
 
 let default_memory_base = 0x400;
@@ -573,27 +564,16 @@ let source_map =
 
 let print_warnings = internal_opt(true, NotDigestable);
 
-/* To be filled in by grainc */
-let base_path = internal_opt("", NotDigestable);
-
-let with_base_path = (path, func) => {
-  let old_base_path = base_path^;
-  base_path := path;
-  try({
-    let ret = func();
-    base_path := old_base_path;
-    ret;
-  }) {
-  | e =>
-    base_path := old_base_path;
-    raise(e);
-  };
-};
-
 let stdlib_directory = (): option(string) =>
   Option.map(
     path => Filepath.(to_string(String.derelativize(path))),
     stdlib_dir^,
+  );
+
+let wasi_polyfill_path = (): option(string) =>
+  Option.map(
+    path => Filepath.(to_string(String.derelativize(path))),
+    wasi_polyfill^,
   );
 
 let module_search_path = () => {

@@ -13,23 +13,19 @@ No other changes yet.
 import Set from "set"
 ```
 
-### Set.**Bucket**
+## Types
 
-```grain
-record Bucket<t> {
-  key: t,
-  next: Option<Bucket<t>>,
-}
-```
+Type declarations included in the Set module.
 
 ### Set.**Set**
 
 ```grain
-record Set<k> {
-  size: Number,
-  buckets: Array<Option<Bucket<k>>>,
-}
+type Set<k>
 ```
+
+## Values
+
+Functions for working with Sets.
 
 ### Set.**makeSized**
 
@@ -219,7 +215,7 @@ Parameters:
 <tr><th>version</th><th>changes</th></tr>
 </thead>
 <tbody>
-<tr><td><code>next</code></td><td>Ensured the iterator function return type is always `Void`</td></tr>
+<tr><td><code>0.5.0</code></td><td>Ensured the iterator function return type is always `Void`</td></tr>
 </tbody>
 </table>
 </details>

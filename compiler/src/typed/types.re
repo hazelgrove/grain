@@ -115,8 +115,8 @@ type value_kind =
 
 [@deriving (sexp, yojson)]
 type allocation_type =
-  | StackAllocated(wasm_repr)
-  | HeapAllocated
+  | Unmanaged(wasm_repr)
+  | Managed
 
 [@deriving (sexp, yojson)]
 and wasm_repr =
@@ -141,6 +141,7 @@ type value_description = {
   val_type: type_expr,
   val_repr,
   val_kind: value_kind,
+  val_internalpath: Path.t,
   val_fullpath: Path.t,
   val_mutable: bool,
   val_global: bool,

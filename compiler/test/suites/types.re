@@ -110,6 +110,13 @@ describe("aliased types", ({test, testSkip}) => {
     |},
     "Type String is not compatible with type Number",
   );
+  assertCompileError(
+    "err_type_alias_5",
+    {|
+      type Foo = List<a>
+    |},
+    "Unbound type parameter 'a'",
+  );
   assertRun(
     "import_type_alias_1",
     {|
@@ -183,6 +190,24 @@ describe("aliased types", ({test, testSkip}) => {
       let foo: Foo = baz
     |},
     "expression was expected of type %Aliases.Foo = Number",
+  );
+  assertRun(
+    "regression_annotated_type_func_1",
+    {|
+      type AddPrinter = (Number, Number) -> Void
+      export let add: AddPrinter = (x, y) => print(x + y)
+      add(4, 4)
+    |},
+    "8\n",
+  );
+  assertRun(
+    "regression_annotated_type_func_2",
+    {|
+      type AddPrinter<a> = (a, a) -> Void
+      export let add: AddPrinter<Number> = (x, y) => print(x + y)
+      add(4, 4)
+    |},
+    "8\n",
   );
 });
 

@@ -47,18 +47,19 @@ let is_grain_module = mod_name => {
 };
 
 let wasi_polyfill_module = () => {
-  "GRAIN$MODULE$./"
-  ++ Filename.remove_extension(Option.get(Config.wasi_polyfill^));
+  Filepath.String.remove_extension(Option.get(Config.wasi_polyfill_path()))
+  ++ ".gr.wasm";
 };
 
 let is_wasi_module = mod_name => {
   mod_name == "wasi_snapshot_preview1";
 };
 
-let is_wasi_polyfill_module = mod_path =>
-  mod_path == resolve(wasi_polyfill_module());
+let is_wasi_polyfill_module = mod_path => {
+  mod_path == wasi_polyfill_module();
+};
 
-let new_base_dir = Filename.dirname;
+let new_base_dir = Filepath.String.dirname;
 
 let rec build_dependency_graph = (~base_dir, mod_path) => {
   let wasm_mod = Hashtbl.find(modules, mod_path);
@@ -99,15 +100,14 @@ let rec build_dependency_graph = (~base_dir, mod_path) => {
       // Perform any WASI polyfilling. Note that we skip this step if we are compiling the polyfill module itself.
       // If we are importing a foreign from WASI, then add a dependency to the polyfill instead.
       let imported_module = wasi_polyfill_module();
-      let resolved_import = resolve(imported_module);
-      if (!Hashtbl.mem(modules, resolved_import)) {
-        Hashtbl.add(modules, resolved_import, load_module(resolved_import));
+      if (!Hashtbl.mem(modules, imported_module)) {
+        Hashtbl.add(modules, imported_module, load_module(imported_module));
         build_dependency_graph(
-          new_base_dir(resolved_import),
-          resolved_import,
+          new_base_dir(imported_module),
+          imported_module,
         );
       };
-      G.add_edge(dependency_graph, mod_path, resolved_import);
+      G.add_edge(dependency_graph, mod_path, imported_module);
     };
   };
 };
@@ -416,7 +416,7 @@ let link_all = (linked_mod, dependencies, signature) => {
           let wasi_polyfill = wasi_polyfill_module();
           let new_name =
             Hashtbl.find_opt(
-              Hashtbl.find(exported_names, resolve(wasi_polyfill)),
+              Hashtbl.find(exported_names, wasi_polyfill),
               imported_name,
             );
           let new_name =
@@ -591,7 +591,7 @@ let link_modules = ({asm: wasm_mod, signature}) => {
 
   G.add_vertex(dependency_graph, main_module);
   build_dependency_graph(
-    ~base_dir=Filename.dirname(main_module),
+    ~base_dir=Filepath.String.dirname(main_module),
     main_module,
   );
   let dependencies =
@@ -611,11 +611,9 @@ let link_modules = ({asm: wasm_mod, signature}) => {
   if (Module.validate(linked_mod) != 1) {
     failwith("Generated invalid linked module");
   };
-  switch (Config.optimization_level^) {
-  | Level_three => Optimize_mod.optimize(linked_mod)
-  | Level_zero
-  | Level_one
-  | Level_two => ()
+  switch (Config.profile^) {
+  | Some(Release) => Optimize_mod.optimize(linked_mod)
+  | None => ()
   };
   linked_mod;
 };
