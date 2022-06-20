@@ -113,7 +113,7 @@
       "overrides": [],
       "dependencies": [
         "ocaml@4.12.0@d41d8cd9", "@opam/easy-format@opam:1.3.3@5d74d95b",
-        "@opam/dune@opam:2.9.3@f57a6d69", "@opam/cppo@opam:1.6.8@7e48217d",
+        "@opam/dune@opam:2.9.3@f57a6d69", "@opam/cppo@opam:1.6.9@db929a12",
         "@opam/biniou@opam:1.2.1@420bda02",
         "@esy-ocaml/substs@0.0.1@d41d8cd9"
       ],
@@ -500,7 +500,7 @@
         "@opam/ppxlib@opam:0.25.0@8553d2e8",
         "@opam/ppx_derivers@opam:1.2.1@e2cbad12",
         "@opam/ocamlfind@opam:1.9.3@781b30f3",
-        "@opam/dune@opam:2.9.3@f57a6d69", "@opam/cppo@opam:1.6.8@7e48217d",
+        "@opam/dune@opam:2.9.3@f57a6d69", "@opam/cppo@opam:1.6.9@db929a12",
         "@esy-ocaml/substs@0.0.1@d41d8cd9"
       ],
       "devDependencies": [
@@ -780,7 +780,7 @@
       "overrides": [],
       "dependencies": [
         "ocaml@4.12.0@d41d8cd9", "@opam/dune@opam:2.9.3@f57a6d69",
-        "@opam/cppo@opam:1.6.8@7e48217d", "@esy-ocaml/substs@0.0.1@d41d8cd9"
+        "@opam/cppo@opam:1.6.9@db929a12", "@esy-ocaml/substs@0.0.1@d41d8cd9"
       ],
       "devDependencies": [
         "ocaml@4.12.0@d41d8cd9", "@opam/dune@opam:2.9.3@f57a6d69"
@@ -1133,20 +1133,20 @@
         "ocaml@4.12.0@d41d8cd9", "@opam/dune@opam:2.9.3@f57a6d69"
       ]
     },
-    "@opam/cppo@opam:1.6.8@7e48217d": {
-      "id": "@opam/cppo@opam:1.6.8@7e48217d",
+    "@opam/cppo@opam:1.6.9@db929a12": {
+      "id": "@opam/cppo@opam:1.6.9@db929a12",
       "name": "@opam/cppo",
-      "version": "opam:1.6.8",
+      "version": "opam:1.6.9",
       "source": {
         "type": "install",
         "source": [
-          "archive:https://opam.ocaml.org/cache/md5/fe/fed401197d86f9089e89f6cbdf1d660d#md5:fed401197d86f9089e89f6cbdf1d660d",
-          "archive:https://github.com/ocaml-community/cppo/archive/v1.6.8.tar.gz#md5:fed401197d86f9089e89f6cbdf1d660d"
+          "archive:https://opam.ocaml.org/cache/md5/d2/d23ffe85ac7dc8f0afd1ddf622770d09#md5:d23ffe85ac7dc8f0afd1ddf622770d09",
+          "archive:https://github.com/ocaml-community/cppo/archive/v1.6.9.tar.gz#md5:d23ffe85ac7dc8f0afd1ddf622770d09"
         ],
         "opam": {
           "name": "cppo",
-          "version": "1.6.8",
-          "path": "esy.lock/opam/cppo.1.6.8"
+          "version": "1.6.9",
+          "path": "esy.lock/opam/cppo.1.6.9"
         }
       },
       "overrides": [],
