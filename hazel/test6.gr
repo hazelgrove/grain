@@ -1,0 +1,22 @@
+import WasmI32 from "runtime/unsafe/wasmi32"
+import PrintWasm from "runtime/unsafe/printWasm"
+import Gc from "runtime/gc"
+import * from "syntax_tree"
+
+Gc.setDebug(true)
+
+@disableGC
+let rec to_number = (arr0 : DHExp) => {
+    let arr = WasmI32.fromGrain(arr0)
+    let arr = WasmI32.add(arr, 4n)
+    let ret = WasmI32.toGrain(arr) : Number
+    Gc.decRef(WasmI32.fromGrain(arr0))
+    ret
+}
+
+let arr = EmptyHole(0)
+print(Gc.getRefCount(arr))
+let num = to_number(arr)
+print(Gc.getRefCount(arr))
+print(Gc.getRefCount(num))
+

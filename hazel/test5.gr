@@ -4,17 +4,20 @@ import Util from "hazel_util"
 import Hazel from "hazel"
 
 let p1 = Hazel.htrue;
+let p11 = true;
+// print(Gc.getRefCount(p1))
+// print(Gc.getRefCount(p11))
 let p2 = Hazel.hfalse;
 let p3 = Hazel.buildEmptyHole(312);
-let result = Hazel.and(p1, p3)
-let h = BoolLit(true)
-print(Gc.getRefCount(h))
-let a = Util.to_number(h)
-print(Gc.getRefCount(h))
-Util.decNumberRef(a)
-print(Gc.getRefCount(h))
-print(h)
-print(Gc.getRefCount(h))
-let hh = Util.to_DHExp(a)
-print(Gc.getRefCount(hh))
-print(Gc.getRefCount(h))
+print(Gc.getRefCount(p3))
+// let result = Hazel.and(p1, p3)
+// let h = BoolLit(true)
+// print(Gc.getRefCount(h))
+// let a = Util.to_number(h)
+// print(Gc.getRefCount(h))
+// print(Gc.getRefCount(h))
+// print(h)
+// print(Gc.getRefCount(h))
+// let hh = Util.to_DHExp(a)
+// print(Gc.getRefCount(hh))
+// print(Gc.getRefCount(h))

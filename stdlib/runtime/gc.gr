@@ -77,8 +77,7 @@ let ptr_to_indet = (userPtr: WasmI32, is_indet: Bool) => {
     userPtr
   }
 }
-
-
+/*
 //Debugging functions:
 import foreign wasm fd_sync : (WasmI32) -> WasmI32 from "wasi_snapshot_preview1"
 
@@ -157,7 +156,7 @@ let logDecRef = (userPtr: WasmI32, refCount: WasmI32, ignoreZeros) => {
   Malloc.free(refCountStr)
 }
 
-
+*/
 
 let getRefCount = (userPtr: WasmI32) => {
   WasmI32.load(userPtr - _HEADER_SIZE, 0n)
@@ -181,6 +180,7 @@ export let malloc = (size: WasmI32) => {
 
 export let free = (userPtr: WasmI32) => {
   // Free the raw pointer
+  let (userPtr, _) = indet_to_ptr(userPtr)
   Malloc.free(userPtr - _HEADER_SIZE)
 }
 
@@ -189,10 +189,10 @@ let incRef = (userPtr: WasmI32) => {
     WasmI32.eqz(userPtr & Tags._GRAIN_GENERIC_TAG_MASK) &&
     WasmI32.ne(userPtr, 0n)
   ) {
-    if (_DEBUG) {
-      logIncRef(userPtr, getRefCount(userPtr))
-      void;
-    }
+    // if (_DEBUG) {
+    //   logIncRef(userPtr, getRefCount(userPtr))
+    //   void;
+    // }
     setRefCount(userPtr, getRefCount(userPtr) + 1n)
   }
   userPtr
@@ -204,10 +204,10 @@ let rec decRef = (userPtr: WasmI32, ignoreZeros: Bool) => {
     WasmI32.ne(userPtr, 0n)
   ) {
     let refCount = getRefCount(userPtr)
-    if (_DEBUG) {
-      logDecRef(userPtr, refCount, ignoreZeros)
-      void
-    }
+    // if (_DEBUG) {
+    //   logDecRef(userPtr, refCount, ignoreZeros)
+    //   void
+    // }
 
     if (WasmI32.eqz(refCount)) {
       if (ignoreZeros) {
@@ -284,29 +284,26 @@ let indet_closure = (userPtr: WasmI32, f) => {
 }
 
 export let incRef = (userPtr: WasmI32) => indet_closure(userPtr, incRef)
-let decRefIgnoreZeros = userPtr => decRef(userPtr, true)
+
 let decRef = userPtr => decRef(userPtr, false)
-export let decRefIgnoreZeros = (userPtr: WasmI32) => indet_closure(userPtr, decRefIgnoreZeros)
 export let decRef = (userPtr: WasmI32) => indet_closure(userPtr, decRef)
+
 // For debugging:
 
-// export let getRefCount = (value) => {
-//   let userPtr = WasmI32.fromGrain(value)
-//   let (userPtr, _) = indet_to_ptr(userPtr)
-//   let ret = if (
-//     WasmI32.eqz(userPtr & Tags._GRAIN_GENERIC_TAG_MASK) &&
-//     WasmI32.ne(userPtr, 0n)
-//   ) {
-//     WasmI32.toGrain((getRefCount(userPtr) * 2n) + 1n) : Number
-//   } else {
-//     0
-//   }
-//   decRef(userPtr)
-//   ret
-// }
+export let getRefCount = (value) => {
+  let userPtr = WasmI32.fromGrain(value)
+  let (userPtr, _) = indet_to_ptr(userPtr)
+  let ret = if (WasmI32.eqz(userPtr & Tags._GRAIN_GENERIC_TAG_MASK) && WasmI32.ne(userPtr, 0n)) {
+    WasmI32.toGrain((getRefCount(userPtr) * 2n) + 1n) : Number
+  } else {
+    0
+  }
+  decRef(userPtr)
+  ret
+}
 
-// export let rec setDebug = (enabled: Bool) => {
-//   _DEBUG = enabled
-//   decRef(WasmI32.fromGrain(setDebug))
-//   void
-// }
+export let rec setDebug = (enabled: Bool) => {
+  _DEBUG = enabled
+  decRef(WasmI32.fromGrain(setDebug))
+  void
+}

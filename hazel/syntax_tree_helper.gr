@@ -1,5 +1,6 @@
 import * from "./syntax_tree"
 import * from "./hazel_util"
+import Gc from "runtime/gc"
 
 export let buildBoolLit = (x : Bool) => {
     to_number(BoolLit(x))
@@ -12,7 +13,13 @@ export let buildBinBoolOpAnd = (x, y) => {
 }
 
 export let buildEmptyHole = (metavar : Number) => {
-    to_number(EmptyHole(metavar))
+    let exp = EmptyHole(metavar)
+    print(Gc.getRefCount(exp))
+    let ret = to_number(exp)
+    print(Gc.getRefCount(ret))
+    print(Gc.getRefCount(ret))
+    //print(Gc.getRefCount(exp))
+    ret
 }
 
 export let builder = (x : Number) => {
