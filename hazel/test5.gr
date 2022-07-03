@@ -3,6 +3,8 @@ import * from "syntax_tree"
 import Util from "hazel_util"
 import Hazel from "hazel"
 
+Gc.setDebug(true)
+
 let p1 = Hazel.htrue;
 let p11 = true;
 // print(Gc.getRefCount(p1))
