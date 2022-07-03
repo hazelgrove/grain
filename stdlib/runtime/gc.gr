@@ -63,8 +63,8 @@ let mut _DEBUG = false
 let _HEADER_SIZE = 8n
 
 let indet_to_ptr = (userPtr: WasmI32) => {
-  if (WasmI32.eq(userPtr & 0b0111n, 0b0010n)) {
-    (WasmI32.sub(userPtr, 2n), true)
+  if (WasmI32.eq(userPtr & 0b0111n, 0b0100n)) {
+    (WasmI32.sub(userPtr, 4n), true)
   } else {
     (userPtr, false)
   }
@@ -72,7 +72,7 @@ let indet_to_ptr = (userPtr: WasmI32) => {
 
 let ptr_to_indet = (userPtr: WasmI32, is_indet: Bool) => {
   if (is_indet) {
-    WasmI32.add(userPtr, 2n)
+    WasmI32.add(userPtr, 4n)
   } else {
     userPtr
   }
@@ -282,7 +282,6 @@ let indet_closure = (userPtr: WasmI32, f) => {
   ptr_to_indet(userPtr, is_indet)
   userPtr
 }
-export let decRef = userPtr => decRef(userPtr, false)
 
 export let incRef = (userPtr: WasmI32) => indet_closure(userPtr, incRef)
 let decRefIgnoreZeros = userPtr => decRef(userPtr, true)
