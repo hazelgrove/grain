@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.6.0](https://github.com/hazelgrove/grain/compare/js-runner-v0.5.2...js-runner-v0.6.0) (2022-07-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **compiler:** Remove decRefIgnoreZeros (#1068)
+* **compiler:** Callee-owned values (#803)
+* Rename JS "runtime" to "js-runner"/"runner" throughout project
+* **compiler:** Rename `grainRuntime` to `_grainEnv`
+* Refactor out references to "runtime" that aren't related to `stdlib/runtime` (#755)
+
+### Features
+
+* **compiler:** Callee-owned values ([#803](https://github.com/hazelgrove/grain/issues/803)) ([c242e89](https://github.com/hazelgrove/grain/commit/c242e89767788e590f053c3d3ddfa7208387c247))
+
+
+### Bug Fixes
+
+* **js-runner:** Add default object for destructuring ([#833](https://github.com/hazelgrove/grain/issues/833)) ([ab96fd6](https://github.com/hazelgrove/grain/commit/ab96fd6c29f297f0e5423f3a6011fe07cf488df8))
+* **js-runner:** Monkeypatch fs_write in browser environment ([#832](https://github.com/hazelgrove/grain/issues/832)) ([330b56f](https://github.com/hazelgrove/grain/commit/330b56f3bdda17bf993e88bb35532831f95c63b3))
+
+
+### Miscellaneous Chores
+
+* **compiler:** Remove decRefIgnoreZeros ([#1068](https://github.com/hazelgrove/grain/issues/1068)) ([3ae8eaa](https://github.com/hazelgrove/grain/commit/3ae8eaabad4467304c500c2f0cc9c40749d8513b))
+* **compiler:** Rename `grainRuntime` to `_grainEnv` ([2d99c5a](https://github.com/hazelgrove/grain/commit/2d99c5ab8fa527328f18d471e8a9128561af7056))
+* Refactor out references to "runtime" that aren't related to `stdlib/runtime` ([#755](https://github.com/hazelgrove/grain/issues/755)) ([2d99c5a](https://github.com/hazelgrove/grain/commit/2d99c5ab8fa527328f18d471e8a9128561af7056))
+* Rename JS "runtime" to "js-runner"/"runner" throughout project ([2d99c5a](https://github.com/hazelgrove/grain/commit/2d99c5ab8fa527328f18d471e8a9128561af7056))
+
 ### [0.5.2](https://github.com/grain-lang/grain/compare/js-runner-v0.5.1...js-runner-v0.5.2) (2022-06-29)
 
 
